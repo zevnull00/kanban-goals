@@ -1415,8 +1415,10 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
 
     tabs.innerHTML = Object.entries(DIRECTIONS).map(([id, dir]) => {
       const projectCount = state.projects.filter(project => project.direction === id).length;
-      const legacyCount = state.directionTasks.filter(task => task.direction === id).length;
-      return `<button class="direction-tab ${id === currentDirection ? 'active' : ''}" data-direction-tab="${id}" role="tab" aria-selected="${id === currentDirection}" style="--direction:${dir.color}">${escapeHTML(dir.label)} <span class="count">${projectCount}${legacyCount ? ` + ${legacyCount}` : ''}</span></button>`;
+      const directionTasksCount = state.directionTasks.filter(task => task.direction === id).length;
+      const unassignedCardsCount = state.cards.filter(card => card.direction === id && !card.projectId).length;
+      const looseCount = directionTasksCount + unassignedCardsCount;
+      return `<button class="direction-tab ${id === currentDirection ? 'active' : ''}" data-direction-tab="${id}" role="tab" aria-selected="${id === currentDirection}" style="--direction:${dir.color}">${escapeHTML(dir.label)} <span class="count">${projectCount}${looseCount ? ` + ${looseCount}` : ''}</span></button>`;
     }).join('');
 
     const dir = DIRECTIONS[currentDirection];
@@ -1537,7 +1539,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
         content.querySelectorAll('.drop-target').forEach(item => item.classList.remove('drop-target'));
       });
       row.addEventListener('dragover', event => {
-        if (event.dataTransfer.types.includes('application/x-kanban-project')) {
+        if (Array.from(event.dataTransfer.types || []).includes('application/x-kanban-project')) {
           event.preventDefault();
           row.classList.add('drop-target');
         }
@@ -1576,8 +1578,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
     content.querySelectorAll('[data-direction-card-edit]').forEach(btn => btn.addEventListener('click', () => {
       const card = state.cards.find(item => item.id === btn.dataset.directionCardEdit);
       if (!card) return;
-      const date = card.completedAt || card.createdAt || new Date().toISOString();
-      $('#weekDate').value = mondayOf(localDateString(new Date(date)));
+      $('#weekDate').value = currentWeek();
       switchView('board'); renderWeek(); render(); openGoal(card.id);
     }));
     content.querySelectorAll('[data-task-edit]').forEach(btn => btn.addEventListener('click', () => {
@@ -1656,7 +1657,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
       if (task.boardCardId || projectTaskCard(task)) return;
       if (!isCurrentWeekSelected()) { $('#weekDate').value = currentWeek(); renderWeek(); }
       const stamp = nowISO();
-      const card = { id: uid(), title: task.title, direction: project.direction, why: '', minVersion: '', metric: '', firstStep: '', column: 'backlog',
+      const card = { id: uid(), title: task.title, direction: project.direction, why: '', minVersion: '', metric: '', firstStep: '', comment: task.comment || '', column: 'backlog',
         createdAt: stamp, updatedAt: stamp, firstStepDone: false, completedAt: '', statusHistory: [{ column: 'backlog', at: stamp }],
         projectId: project.id, projectName: project.name, projectTaskId: task.id };
       state.cards.push(card);
