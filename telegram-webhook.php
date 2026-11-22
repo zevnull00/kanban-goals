@@ -118,6 +118,58 @@ register_shutdown_function(function () {
     ]);
 });
 
+function webhook_claim_update_id(string $updateId): bool
+{
+    global $webhookLogPath;
+
+    $seenPath = dirname($webhookLogPath) . '/telegram-update-ids.log';
+    $handle = @fopen($seenPath, 'c+');
+    if ($handle === false) {
+        webhook_log('update.dedupe.unavailable', ['reason' => 'cannot_open_store']);
+        return true; // Fail open: do not discard a legitimate update if storage is unavailable.
+    }
+
+    if (!flock($handle, LOCK_EX)) {
+        fclose($handle);
+        webhook_log('update.dedupe.unavailable', ['reason' => 'cannot_lock_store']);
+        return true;
+    }
+
+    rewind($handle);
+    $contents = stream_get_contents($handle);
+    $seenIds = is_string($contents)
+        ? array_values(array_filter(array_map('trim', explode("\n", $contents)), static fn($id) => $id !== ''))
+        : [];
+
+    if (in_array($updateId, $seenIds, true)) {
+        flock($handle, LOCK_UN);
+        fclose($handle);
+        webhook_log('update.dedupe.duplicate', ['update_id' => $updateId]);
+        return false;
+    }
+
+    $seenIds[] = $updateId;
+    // Keep only the latest IDs; Telegram update IDs are monotonically increasing.
+    if (count($seenIds) > 2048) {
+        $seenIds = array_slice($seenIds, -2048);
+    }
+
+    rewind($handle);
+    ftruncate($handle, 0);
+    $written = fwrite($handle, implode("\n", $seenIds) . "\n");
+    fflush($handle);
+    flock($handle, LOCK_UN);
+    fclose($handle);
+
+    if ($written === false) {
+        webhook_log('update.dedupe.write_failed', ['update_id' => $updateId]);
+        return true;
+    }
+    @chmod($seenPath, 0600);
+    webhook_log('update.dedupe.accepted', ['update_id' => $updateId]);
+    return true;
+}
+
 function webhook_reply(int $status, array $payload): void
 {
     $responseKind = isset($payload['method']) ? (string)$payload['method'] : 'json';
@@ -409,6 +461,13 @@ webhook_log('request.json.valid', [
     'update_keys' => array_slice(array_keys($update), 0, 12),
 ]);
 
+if (isset($update['update_id'])) {
+    $updateId = (string)$update['update_id'];
+    if ($updateId !== '' && !webhook_claim_update_id($updateId)) {
+        webhook_reply(200, ['ok' => true, 'duplicate' => true]);
+    }
+}
+
 $message = $update['message'] ?? null;
 if (!is_array($message)) {
     webhook_log('update.ignored', ['reason' => 'no_message_object']);
@@ -428,7 +487,11 @@ if (!is_array($chat) || !is_array($from) || ($chat['type'] ?? '') !== 'private'
 $chatId = (string)$chat['id'];
 $userId = (string)$from['id'];
 $text = trim((string)($message['text'] ?? ''));
-$commandKind = $text === '/start' ? 'start' : ($text === '/help' ? 'help' : ($text === '' ? 'empty' : 'text'));
+$commandToken = preg_split('/\\s+/', $text, 2)[0] ?? '';
+$commandToken = preg_replace('/@\\w+$/', '', $commandToken) ?? $commandToken;
+$isStartCommand = $commandToken === '/start';
+$isHelpCommand = $commandToken === '/help';
+$commandKind = $isStartCommand ? 'start' : ($isHelpCommand ? 'help' : ($text === '' ? 'empty' : 'text'));
 webhook_log('message.received', [
     'update_id' => isset($update['update_id']) ? (int)$update['update_id'] : null,
     'message_id' => isset($message['message_id']) ? (int)$message['message_id'] : null,
@@ -450,8 +513,8 @@ if (!$authorized) {
     send_telegram_message($config, $chatId, 'Пока нет доступа к этому боту. Ваш Telegram ID: ' . $userId . '. Передайте этот номер владельцу для добавления доступа.');
 }
 
-if ($text === '/start' || $text === '/help') {
-    webhook_log('message.route', ['route' => $text === '/start' ? 'start' : 'help']);
+if ($isStartCommand || $isHelpCommand) {
+    webhook_log('message.route', ['route' => $isStartCommand ? 'start' : 'help']);
     send_telegram_message($config, $chatId,
         "Привет! Я помощник сайта zevnull.ru.\n\nНапиши обычным сообщением, что нужно изменить на сайте. Например:\n«Сделай заголовок главной страницы крупнее и поменяй текст приветствия».\n\nЯ передам задачу ИИ-агенту Рег.облака. Он изучит сайт, подготовит изменение, проверит его и опубликует, если проверки пройдут."
     );
