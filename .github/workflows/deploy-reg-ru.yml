@@ -1,0 +1,127 @@
+name: Deploy to REG.RU
+
+on:
+  workflow_dispatch:
+    inputs:
+      remote_path:
+        description: "Absolute SFTP path to the target directory (use a staging directory first)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: reg-ru-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Upload index.html over SFTP
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate configuration and target path
+        shell: bash
+        env:
+          REMOTE_PATH: ${{ inputs.remote_path }}
+          REG_SFTP_HOST: ${{ secrets.REG_SFTP_HOST }}
+          REG_SFTP_PORT: ${{ secrets.REG_SFTP_PORT }}
+          REG_SFTP_USER: ${{ secrets.REG_SFTP_USER }}
+          REG_SFTP_PASSWORD: ${{ secrets.REG_SFTP_PASSWORD }}
+          REG_SFTP_KNOWN_HOSTS: ${{ secrets.REG_SFTP_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          : "${REG_SFTP_HOST:?Missing REG_SFTP_HOST secret}"
+          : "${REG_SFTP_PORT:?Missing REG_SFTP_PORT secret}"
+          : "${REG_SFTP_USER:?Missing REG_SFTP_USER secret}"
+          : "${REG_SFTP_PASSWORD:?Missing REG_SFTP_PASSWORD secret}"
+          : "${REG_SFTP_KNOWN_HOSTS:?Missing REG_SFTP_KNOWN_HOSTS secret}"
+          [[ "$REG_SFTP_PORT" =~ ^[0-9]{1,5}$ ]] || { echo "Invalid SFTP port"; exit 1; }
+          [[ "$REMOTE_PATH" == /* ]] || { echo "remote_path must be an absolute SFTP path"; exit 1; }
+          [[ "$REMOTE_PATH" != "/" ]] || { echo "Refusing to deploy to filesystem root"; exit 1; }
+          [[ "$REMOTE_PATH" != *".."* && "$REMOTE_PATH" != *" "* ]] || { echo "Path must not contain '..' or spaces"; exit 1; }
+          [[ "$REMOTE_PATH" =~ ^/[A-Za-z0-9_./-]+$ ]] || { echo "Path contains unsupported characters"; exit 1; }
+          test -s index.html || { echo "index.html is missing or empty"; exit 1; }
+
+      - name: Install OpenSSH client and sshpass
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openssh-client sshpass
+
+      - name: Install pinned server host key
+        shell: bash
+        env:
+          REG_SFTP_KNOWN_HOSTS: ${{ secrets.REG_SFTP_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          printf '%s\n' "$REG_SFTP_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+      - name: Upload new page to a temporary remote name
+        shell: bash
+        env:
+          REMOTE_PATH: ${{ inputs.remote_path }}
+          REG_SFTP_HOST: ${{ secrets.REG_SFTP_HOST }}
+          REG_SFTP_PORT: ${{ secrets.REG_SFTP_PORT }}
+          REG_SFTP_USER: ${{ secrets.REG_SFTP_USER }}
+          REG_SFTP_PASSWORD: ${{ secrets.REG_SFTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          printf 'put index.html "%s/.index.html.uploading"\n' "$REMOTE_PATH" > "$RUNNER_TEMP/upload.batch"
+          export SSHPASS="$REG_SFTP_PASSWORD"
+          sshpass -e sftp -q -P "$REG_SFTP_PORT" \
+            -oBatchMode=no \
+            -oStrictHostKeyChecking=yes \
+            -oUserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            -b "$RUNNER_TEMP/upload.batch" \
+            "$REG_SFTP_USER@$REG_SFTP_HOST"
+
+      - name: Backup current page and activate uploaded page
+        id: activate
+        shell: bash
+        env:
+          REMOTE_PATH: ${{ inputs.remote_path }}
+          REG_SFTP_HOST: ${{ secrets.REG_SFTP_HOST }}
+          REG_SFTP_PORT: ${{ secrets.REG_SFTP_PORT }}
+          REG_SFTP_USER: ${{ secrets.REG_SFTP_USER }}
+          REG_SFTP_PASSWORD: ${{ secrets.REG_SFTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          BACKUP_NAME="index.html.backup.${GITHUB_RUN_ID}"
+          {
+            printf -- '-rename "%s/index.html" "%s/%s"\n' "$REMOTE_PATH" "$REMOTE_PATH" "$BACKUP_NAME"
+            printf 'rename "%s/.index.html.uploading" "%s/index.html"\n' "$REMOTE_PATH" "$REMOTE_PATH"
+          } > "$RUNNER_TEMP/activate.batch"
+          export SSHPASS="$REG_SFTP_PASSWORD"
+          sshpass -e sftp -q -P "$REG_SFTP_PORT" \
+            -oBatchMode=no \
+            -oStrictHostKeyChecking=yes \
+            -oUserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            -b "$RUNNER_TEMP/activate.batch" \
+            "$REG_SFTP_USER@$REG_SFTP_HOST"
+
+      - name: Restore previous page if activation failed
+        if: failure() && steps.activate.outcome == 'failure'
+        shell: bash
+        env:
+          REMOTE_PATH: ${{ inputs.remote_path }}
+          REG_SFTP_HOST: ${{ secrets.REG_SFTP_HOST }}
+          REG_SFTP_PORT: ${{ secrets.REG_SFTP_PORT }}
+          REG_SFTP_USER: ${{ secrets.REG_SFTP_USER }}
+          REG_SFTP_PASSWORD: ${{ secrets.REG_SFTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          BACKUP_NAME="index.html.backup.${GITHUB_RUN_ID}"
+          printf -- '-rename "%s/%s" "%s/index.html"\n' "$REMOTE_PATH" "$BACKUP_NAME" "$REMOTE_PATH" > "$RUNNER_TEMP/rollback.batch"
+          export SSHPASS="$REG_SFTP_PASSWORD"
+          sshpass -e sftp -q -P "$REG_SFTP_PORT" \
+            -oBatchMode=no \
+            -oStrictHostKeyChecking=yes \
+            -oUserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            -b "$RUNNER_TEMP/rollback.batch" \
+            "$REG_SFTP_USER@$REG_SFTP_HOST"
