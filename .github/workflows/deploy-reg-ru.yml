@@ -10,8 +10,9 @@ on:
   workflow_dispatch:
     inputs:
       remote_path:
-        description: "Absolute SFTP path to the target directory"
+        description: "Directory relative to the SFTP home directory"
         required: true
+        default: "www/zevnull.ru"
         type: string
   workflow_call:
     inputs:
@@ -44,7 +45,8 @@ jobs:
       - name: Validate configuration and target path
         shell: bash
         env:
-          REMOTE_PATH: ${{ inputs.remote_path || '/www/zevnull.ru/' }}
+          REMOTE_PATH: ${{ inputs.remote_path || 'www/zevnull.ru' }}
+          
           REG_SFTP_HOST: ${{ secrets.REG_SFTP_HOST }}
           REG_SFTP_PORT: ${{ secrets.REG_SFTP_PORT }}
           REG_SFTP_USER: ${{ secrets.REG_SFTP_USER }}
@@ -56,10 +58,10 @@ jobs:
           : "${REG_SFTP_USER:?Missing REG_SFTP_USER secret}"
           : "${REG_SFTP_PASSWORD:?Missing REG_SFTP_PASSWORD secret}"
           [[ "$REG_SFTP_PORT" =~ ^[0-9]{1,5}$ ]] || { echo "Invalid SFTP port"; exit 1; }
-          [[ "$REMOTE_PATH" == /* ]] || { echo "remote_path must be an absolute SFTP path"; exit 1; }
-          [[ "$REMOTE_PATH" != "/" ]] || { echo "Refusing to deploy to filesystem root"; exit 1; }
+          REMOTE_PATH="${REMOTE_PATH%/}"
+          [[ -n "$REMOTE_PATH" && "$REMOTE_PATH" != "." && "$REMOTE_PATH" != /* ]] || { echo "remote_path must be relative to the SFTP home directory"; exit 1; }
           [[ "$REMOTE_PATH" != *".."* && "$REMOTE_PATH" != *" "* ]] || { echo "Path must not contain '..' or spaces"; exit 1; }
-          [[ "$REMOTE_PATH" =~ ^/[A-Za-z0-9_./-]+$ ]] || { echo "Path contains unsupported characters"; exit 1; }
+          [[ "$REMOTE_PATH" =~ ^[A-Za-z0-9_./-]+$ ]] || { echo "Path contains unsupported characters"; exit 1; }
           test -s index.html || { echo "index.html is missing or empty"; exit 1; }
           test -s api.php || { echo "api.php is missing or empty"; exit 1; }
           test -s telegram-webhook.php || { echo "telegram-webhook.php is missing or empty"; exit 1; }
@@ -69,39 +71,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y openssh-client sshpass
 
-      - name: Inspect SFTP account directories
-        shell: bash
-        env:
-          REMOTE_PATH: ${{ inputs.remote_path || '/www/zevnull.ru/' }}
-          REG_SFTP_HOST: ${{ secrets.REG_SFTP_HOST }}
-          REG_SFTP_PORT: ${{ secrets.REG_SFTP_PORT }}
-          REG_SFTP_USER: ${{ secrets.REG_SFTP_USER }}
-          REG_SFTP_PASSWORD: ${{ secrets.REG_SFTP_PASSWORD }}
-        run: |
-          set -euo pipefail
-          {
-            printf '%s\n' 'pwd'
-            printf '%s\n' '-ls -la .'
-            printf '%s\n' '-ls -la /'
-            printf '%s\n' '-ls -la /www'
-            printf '%s\n' '-ls -la www'
-            printf '%s\n' '-ls -la www/zevnull.ru'
-            printf '%s\n' '-ls -la /zevnull.ru'
-            printf '%s\n' "-ls -la ${REMOTE_PATH%/}"
-          } > "$RUNNER_TEMP/diagnose.batch"
-          export SSHPASS="$REG_SFTP_PASSWORD"
-          sshpass -e sftp -q -P "$REG_SFTP_PORT" \
-            -oBatchMode=no \
-            -oStrictHostKeyChecking=no \
-            -oUserKnownHostsFile=/dev/null \
-            -oGlobalKnownHostsFile=/dev/null \
-            -b "$RUNNER_TEMP/diagnose.batch" \
-            "$REG_SFTP_USER@$REG_SFTP_HOST"
-
       - name: Upload application files to temporary remote names
         shell: bash
         env:
-          REMOTE_PATH: ${{ inputs.remote_path || '/www/zevnull.ru/' }}
+          REMOTE_PATH: ${{ inputs.remote_path || 'www/zevnull.ru' }}
+          
           REG_SFTP_HOST: ${{ secrets.REG_SFTP_HOST }}
           REG_SFTP_PORT: ${{ secrets.REG_SFTP_PORT }}
           REG_SFTP_USER: ${{ secrets.REG_SFTP_USER }}
@@ -126,7 +100,8 @@ jobs:
         id: activate
         shell: bash
         env:
-          REMOTE_PATH: ${{ inputs.remote_path || '/www/zevnull.ru/' }}
+          REMOTE_PATH: ${{ inputs.remote_path || 'www/zevnull.ru' }}
+          
           REG_SFTP_HOST: ${{ secrets.REG_SFTP_HOST }}
           REG_SFTP_PORT: ${{ secrets.REG_SFTP_PORT }}
           REG_SFTP_USER: ${{ secrets.REG_SFTP_USER }}
@@ -157,7 +132,8 @@ jobs:
         if: failure() && steps.activate.outcome == 'failure'
         shell: bash
         env:
-          REMOTE_PATH: ${{ inputs.remote_path || '/www/zevnull.ru/' }}
+          REMOTE_PATH: ${{ inputs.remote_path || 'www/zevnull.ru' }}
+          
           REG_SFTP_HOST: ${{ secrets.REG_SFTP_HOST }}
           REG_SFTP_PORT: ${{ secrets.REG_SFTP_PORT }}
           REG_SFTP_USER: ${{ secrets.REG_SFTP_USER }}
