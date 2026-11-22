@@ -252,7 +252,7 @@ def run() -> int:
         updated_html = updated_html.replace(find, replacement, 1)
 
     if updated_html == original_html:
-        write_output(False, summary or "После применения плана содержимое сайта не изменилось.")
+        write_output(False, summary or "После применения плана содержимое сайта не изменилось.", usage_summary)
         return 0
 
     if len(updated_html) > len(original_html) + 100_000 or len(updated_html) < len(original_html) - 100_000:
