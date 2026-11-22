@@ -153,7 +153,7 @@ function send_telegram_message(array $config, $chatId, string $message): void
         $context = stream_context_create([
             'http' => [
                 'method' => 'POST',
-                'header' => "Content-Type: application/json\\r\\n",
+                'header' => "Content-Type: application/json\r\n",
                 'content' => $payload,
                 'timeout' => 3,
                 'ignore_errors' => true,
@@ -164,7 +164,7 @@ function send_telegram_message(array $config, $chatId, string $message): void
         $networkError = error_get_last();
         $status = 0;
         foreach (($http_response_header ?? []) as $header) {
-            if (preg_match('/^HTTP\\/\\S+\\s+(\\d{3})/', $header, $matches)) {
+            if (preg_match('/^HTTP\/\S+\s+(\d{3})/', $header, $matches)) {
                 $status = (int)$matches[1];
             }
         }
