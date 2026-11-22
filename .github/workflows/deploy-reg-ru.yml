@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "index.html"
+      - ".github/workflows/deploy-reg-ru.yml"
   workflow_dispatch:
     inputs:
       remote_path:
@@ -67,6 +68,35 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y openssh-client sshpass
+
+      - name: Inspect SFTP account directories
+        shell: bash
+        env:
+          REMOTE_PATH: ${{ inputs.remote_path || '/www/zevnull.ru/' }}
+          REG_SFTP_HOST: ${{ secrets.REG_SFTP_HOST }}
+          REG_SFTP_PORT: ${{ secrets.REG_SFTP_PORT }}
+          REG_SFTP_USER: ${{ secrets.REG_SFTP_USER }}
+          REG_SFTP_PASSWORD: ${{ secrets.REG_SFTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          {
+            printf '%s\\n' 'pwd'
+            printf '%s\\n' '-ls -la .'
+            printf '%s\\n' '-ls -la /'
+            printf '%s\\n' '-ls -la /www'
+            printf '%s\\n' '-ls -la www'
+            printf '%s\\n' '-ls -la www/zevnull.ru'
+            printf '%s\\n' '-ls -la /zevnull.ru'
+            printf '%s\\n' '-ls -la ${REMOTE_PATH%/}'
+          } > "$RUNNER_TEMP/diagnose.batch"
+          export SSHPASS="$REG_SFTP_PASSWORD"
+          sshpass -e sftp -q -P "$REG_SFTP_PORT" \
+            -oBatchMode=no \
+            -oStrictHostKeyChecking=no \
+            -oUserKnownHostsFile=/dev/null \
+            -oGlobalKnownHostsFile=/dev/null \
+            -b "$RUNNER_TEMP/diagnose.batch" \
+            "$REG_SFTP_USER@$REG_SFTP_HOST"
 
       - name: Upload application files to temporary remote names
         shell: bash
