@@ -4,7 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       remote_path:
-        description: "Absolute SFTP path to the target directory (use a staging directory first)"
+        description: "Absolute SFTP path to the target directory"
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      remote_path:
+        description: "Absolute SFTP path to the target directory"
         required: true
         type: string
 
@@ -17,7 +23,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: Upload index.html and api.php over SFTP
+    name: Upload website files over SFTP
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -44,6 +50,7 @@ jobs:
           [[ "$REMOTE_PATH" =~ ^/[A-Za-z0-9_./-]+$ ]] || { echo "Path contains unsupported characters"; exit 1; }
           test -s index.html || { echo "index.html is missing or empty"; exit 1; }
           test -s api.php || { echo "api.php is missing or empty"; exit 1; }
+          test -s telegram-webhook.php || { echo "telegram-webhook.php is missing or empty"; exit 1; }
 
       - name: Install OpenSSH client and sshpass
         run: |
@@ -63,6 +70,7 @@ jobs:
           {
             printf 'put index.html "%s/.index.html.uploading"\n' "$REMOTE_PATH"
             printf 'put api.php "%s/.api.php.uploading"\n' "$REMOTE_PATH"
+            printf 'put telegram-webhook.php "%s/.telegram-webhook.php.uploading"\n' "$REMOTE_PATH"
           } > "$RUNNER_TEMP/upload.batch"
           export SSHPASS="$REG_SFTP_PASSWORD"
           sshpass -e sftp -q -P "$REG_SFTP_PORT" \
@@ -86,11 +94,14 @@ jobs:
           set -euo pipefail
           INDEX_BACKUP="index.html.backup.${GITHUB_RUN_ID}"
           API_BACKUP="api.php.backup.${GITHUB_RUN_ID}"
+          WEBHOOK_BACKUP="telegram-webhook.php.backup.${GITHUB_RUN_ID}"
           {
             printf -- '-rename "%s/index.html" "%s/%s"\n' "$REMOTE_PATH" "$REMOTE_PATH" "$INDEX_BACKUP"
             printf -- '-rename "%s/api.php" "%s/%s"\n' "$REMOTE_PATH" "$REMOTE_PATH" "$API_BACKUP"
+            printf -- '-rename "%s/telegram-webhook.php" "%s/%s"\n' "$REMOTE_PATH" "$REMOTE_PATH" "$WEBHOOK_BACKUP"
             printf 'rename "%s/.index.html.uploading" "%s/index.html"\n' "$REMOTE_PATH" "$REMOTE_PATH"
             printf 'rename "%s/.api.php.uploading" "%s/api.php"\n' "$REMOTE_PATH" "$REMOTE_PATH"
+            printf 'rename "%s/.telegram-webhook.php.uploading" "%s/telegram-webhook.php"\n' "$REMOTE_PATH" "$REMOTE_PATH"
           } > "$RUNNER_TEMP/activate.batch"
           export SSHPASS="$REG_SFTP_PASSWORD"
           sshpass -e sftp -q -P "$REG_SFTP_PORT" \
@@ -114,9 +125,11 @@ jobs:
           set -euo pipefail
           INDEX_BACKUP="index.html.backup.${GITHUB_RUN_ID}"
           API_BACKUP="api.php.backup.${GITHUB_RUN_ID}"
+          WEBHOOK_BACKUP="telegram-webhook.php.backup.${GITHUB_RUN_ID}"
           {
             printf -- '-rename "%s/%s" "%s/index.html"\n' "$REMOTE_PATH" "$INDEX_BACKUP" "$REMOTE_PATH"
             printf -- '-rename "%s/%s" "%s/api.php"\n' "$REMOTE_PATH" "$API_BACKUP" "$REMOTE_PATH"
+            printf -- '-rename "%s/%s" "%s/telegram-webhook.php"\n' "$REMOTE_PATH" "$WEBHOOK_BACKUP" "$REMOTE_PATH"
           } > "$RUNNER_TEMP/rollback.batch"
           export SSHPASS="$REG_SFTP_PASSWORD"
           sshpass -e sftp -q -P "$REG_SFTP_PORT" \
