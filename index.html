@@ -841,7 +841,7 @@ body[data-theme="dark"] .auth-error{color:#f0aaa0!important}
               form.removeEventListener('submit', handler);
               resolve(loaded);
             } catch (error) {
-              errorBox.textContent = error.status === 401
+              errorBox.textContent = (error.status === 401 || error.status === 429)
                 ? 'Ты не Даша!'
                 : 'Не удалось войти: ' + error.message;
               errorBox.classList.remove('hidden');
