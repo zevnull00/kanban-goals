@@ -74,7 +74,7 @@ function normalize_payload($data): array
         throw new InvalidArgumentException('Данные канбана имеют неверный формат.');
     }
     $result = [
-        'schemaVersion' => isset($data['schemaVersion']) && is_numeric($data['schemaVersion']) ? (int)$data['schemaVersion'] : 3,
+        'schemaVersion' => isset($data['schemaVersion']) && is_numeric($data['schemaVersion']) ? (int)$data['schemaVersion'] : 4,
         'updatedAt' => isset($data['updatedAt']) && is_string($data['updatedAt']) ? $data['updatedAt'] : gmdate('c'),
     ];
     foreach (['cards', 'weekly', 'directionTasks', 'projects', 'deadlines', 'customNotes'] as $key) {
