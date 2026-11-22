@@ -25,7 +25,7 @@ function send_telegram_message($chatId, string $message): void
     ]);
 }
 
-function dispatch_github_workflow(array $config, string $task, string $chatId, string $userId): bool
+function dispatch_github_workflow(array $config, string $task, string $chatId, string $userId): int
 {
     $owner = (string)($config['github_owner'] ?? '');
     $repo = (string)($config['github_repo'] ?? '');
@@ -35,7 +35,7 @@ function dispatch_github_workflow(array $config, string $task, string $chatId, s
 
     if ($owner === '' || $repo === '' || $token === '' || !preg_match('/^[A-Za-z0-9._-]+$/', $workflow)) {
         error_log('Telegram webhook: GitHub integration is not configured.');
-        return false;
+        return -1;
     }
 
     $url = 'https://api.github.com/repos/' . rawurlencode($owner) . '/' . rawurlencode($repo)
@@ -72,11 +72,10 @@ function dispatch_github_workflow(array $config, string $task, string $chatId, s
             $status = (int)$matches[1];
         }
     }
-    if ($response === false || $status !== 204) {
+    if ($response === false || !in_array($status, [200, 204], true)) {
         error_log('Telegram webhook: GitHub workflow dispatch failed with HTTP ' . $status . '.');
-        return false;
     }
-    return true;
+    return $status;
 }
 
 $configPath = __DIR__ . '/kanban-private/telegram-config.php';
@@ -143,9 +142,24 @@ if (strlen($text) > 3000) {
     webhook_reply(200, ['ok' => true]);
 }
 
-if (!dispatch_github_workflow($config, $text, $chatId, $userId)) {
-    send_telegram_message($chatId, 'Не удалось запустить обработку задачи в GitHub. Попробуй ещё раз позже или сообщи владельцу бота.');
-    webhook_reply(502, ['ok' => false, 'error' => 'GitHub workflow dispatch failed.']);
+$dispatchStatus = dispatch_github_workflow($config, $text, $chatId, $userId);
+if (!in_array($dispatchStatus, [200, 204], true)) {
+    if ($dispatchStatus === -1) {
+        $reason = 'Проверь github_token, github_owner, github_repo и github_workflow в приватном конфиге.';
+    } elseif ($dispatchStatus === 0) {
+        $reason = 'Хостинг не смог подключиться к api.github.com.';
+    } elseif ($dispatchStatus === 401) {
+        $reason = 'GitHub не принял токен: проверь, не истёк ли он и правильно ли скопирован.';
+    } elseif ($dispatchStatus === 403) {
+        $reason = 'GitHub отказал в доступе. Для токена нужно Actions: Read and write в репозитории zevnull00/kanban-goals.';
+    } elseif ($dispatchStatus === 404) {
+        $reason = 'GitHub не нашёл workflow или репозиторий для этого токена. Проверь github_owner, github_repo и github_workflow.';
+    } elseif ($dispatchStatus === 422) {
+        $reason = 'GitHub отклонил параметры запуска workflow. Проверь имя workflow и ветку main.';
+    } else {
+        $reason = 'Проверь настройки GitHub и приватную конфигурацию.';
+    }
+    send_telegram_message($chatId, 'Не удалось запустить workflow GitHub (HTTP ' . $dispatchStatus . '). ' . $reason);
 }
 
 send_telegram_message($chatId, 'Принял задачу. Запускаю ИИ-агента Рег.облака: он изучит сайт, внесёт изменение и проверит его. Напишу сюда, когда проверка и публикация завершатся.');
