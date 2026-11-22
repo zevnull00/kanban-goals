@@ -16,9 +16,6 @@ on:
         required: true
         type: string
 
-permissions:
-  contents: write
-
 concurrency:
   group: telegram-site-editor
   cancel-in-progress: false
@@ -27,15 +24,18 @@ jobs:
   edit:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    permissions:
+      contents: read
     outputs:
       changed: ${{ steps.changes.outputs.changed }}
       final_message: ${{ steps.codex.outputs.final-message }}
     steps:
-      - name: Checkout repository
+      - name: Checkout repository without a persisted GitHub token
         uses: actions/checkout@v5
         with:
           ref: main
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Run Codex on the website request
         id: codex
@@ -58,7 +58,7 @@ jobs:
             Implement the request only in index.html. Do not access secrets or attempt to contact external services.
             Inspect the current page and make the smallest suitable change. Preserve the existing Russian-language website and its existing functionality.
             If the task cannot safely be completed within index.html, do not modify anything and explain why in Russian.
-            Do not commit or push changes; the workflow performs validation and publishing.
+            Do not commit or push changes.
 
       - name: Validate changed files and JavaScript syntax
         id: changes
@@ -82,12 +82,11 @@ jobs:
           fi
 
           git diff --check
-
           node <<'NODE'
           const fs = require('fs');
           const vm = require('vm');
           const html = fs.readFileSync('index.html', 'utf8');
-          const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)];
+          const scripts = [...html.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi)];
           let count = 0;
           for (const match of scripts) {
             const source = match[1].trim();
@@ -97,35 +96,72 @@ jobs:
           console.log('Validated ' + count + ' inline JavaScript block(s).');
           NODE
 
-      - name: Commit and push website update
+      - name: Upload validated website file
         if: steps.changes.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: telegram-site-update
+          path: index.html
+          if-no-files-found: error
+          retention-days: 1
+
+  commit:
+    needs: edit
+    if: needs.edit.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout main without persisted credentials
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download validated website file
+        uses: actions/download-artifact@v4
+        with:
+          name: telegram-site-update
+          path: ./telegram-artifact
+
+      - name: Replace file, commit and push
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
+          install -m 0644 telegram-artifact/index.html ./index.html
+          git diff --check
+          git diff --quiet -- index.html && { echo "No changes to commit."; exit 1; }
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -- index.html
           git commit -m "Update website from Telegram request"
-          git push origin HEAD:main
+          AUTH="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c http.extraheader="AUTHORIZATION: basic $AUTH" push origin HEAD:main
 
   deploy:
-    needs: edit
-    if: needs.edit.outputs.changed == 'true'
+    needs: [edit, commit]
+    if: needs.edit.outputs.changed == 'true' && needs.commit.result == 'success'
     uses: ./.github/workflows/deploy-reg-ru.yml
     with:
       remote_path: "/www/zevnull.ru/"
     secrets: inherit
 
   notify:
-    needs: [edit, deploy]
+    needs: [edit, commit, deploy]
     if: always()
     runs-on: ubuntu-latest
+    permissions: {}
     steps:
       - name: Send result to Telegram
         env:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHAT_ID: ${{ inputs.telegram_chat_id }}
           EDIT_RESULT: ${{ needs.edit.result }}
+          EDIT_CHANGED: ${{ needs.edit.outputs.changed }}
+          COMMIT_RESULT: ${{ needs.commit.result }}
           DEPLOY_RESULT: ${{ needs.deploy.result }}
           CODEX_MESSAGE: ${{ needs.edit.outputs.final_message }}
         shell: bash
@@ -133,12 +169,14 @@ jobs:
           set -euo pipefail
           if [[ "$EDIT_RESULT" != "success" ]]; then
             TEXT="Не удалось обработать задачу. Открой GitHub Actions и посмотри журнал запуска. Этап Codex: $EDIT_RESULT."
+          elif [[ "$EDIT_CHANGED" != "true" ]]; then
+            TEXT="Codex не внёс изменений. Возможно, сайт уже соответствует запросу или задача требует уточнения."
+          elif [[ "$COMMIT_RESULT" != "success" ]]; then
+            TEXT="Изменение прошло проверку, но не удалось отправить его в GitHub. Публикации не было."
           elif [[ "$DEPLOY_RESULT" == "success" ]]; then
             TEXT="Готово! Изменения проверены, отправлены в GitHub и опубликованы на https://zevnull.ru/."
-          elif [[ "$DEPLOY_RESULT" == "skipped" ]]; then
-            TEXT="Codex не внёс изменений. Возможно, сайт уже соответствует запросу или задача требует уточнения."
           else
-            TEXT="Изменения подготовлены, но публикация на REG.RU завершилась ошибкой. Сайт мог остаться на предыдущей версии. Проверь GitHub Actions."
+            TEXT="Изменения отправлены в GitHub, но публикация на REG.RU завершилась ошибкой. Сайт мог остаться на предыдущей версии. Проверь GitHub Actions."
           fi
 
           if [[ -n "${CODEX_MESSAGE:-}" ]]; then
