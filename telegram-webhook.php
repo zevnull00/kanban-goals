@@ -144,7 +144,7 @@ $chatId = (string)$chat['id'];
 $userId = (string)$from['id'];
 $allowedIds = array_map('strval', (array)($config['telegram_allowed_user_ids'] ?? []));
 if (!in_array($userId, $allowedIds, true) || $chatId !== $userId) {
-    send_telegram_message($config, $chatId, 'Этот бот доступен только пользователям из списка доступа.');
+    send_telegram_message($config, $chatId, 'Пока нет доступа к этому боту. Ваш Telegram ID: ' . $userId . '. Передайте этот номер владельцу для добавления доступа.');
     webhook_reply(200, ['ok' => true, 'ignored' => true]);
 }
 
