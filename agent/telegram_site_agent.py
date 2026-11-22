@@ -107,15 +107,18 @@ def extract_json(text: str) -> dict[str, Any]:
     return parsed
 
 
-def write_output(changed: bool, message: str) -> None:
+def write_output(changed: bool, message: str, usage_summary: str = "") -> None:
     output_path = os.environ.get("GITHUB_OUTPUT")
     if not output_path:
         return
     safe = " ".join(message.replace("\r", " ").replace("\n", " ").split())
     safe = safe[:1800].replace("%", "%25")
+    safe_usage = " ".join(usage_summary.replace("\r", " ").replace("\n", " ").split())
+    safe_usage = safe_usage[:500].replace("%", "%25")
     with open(output_path, "a", encoding="utf-8") as output:
         output.write("changed=" + ("true" if changed else "false") + "\n")
         output.write("final_message=" + safe + "\n")
+        output.write("usage_summary=" + safe_usage + "\n")
 
 
 def run() -> int:
@@ -180,11 +183,22 @@ def run() -> int:
         "max_tokens": 12000,
     })
     usage = response.get("usage")
+    usage_summary = ""
     if isinstance(usage, dict):
+        input_tokens = usage.get("prompt_tokens", usage.get("input_tokens"))
+        output_tokens = usage.get("completion_tokens", usage.get("output_tokens"))
+        total_tokens = usage.get("total_tokens")
         print("REGCLOUD_USAGE " + json.dumps({
             "model": model,
             "usage": usage,
         }, ensure_ascii=False, sort_keys=True))
+        if isinstance(input_tokens, int) and isinstance(output_tokens, int):
+            usage_summary = (
+                f"{model}: входящие {input_tokens}, исходящие {output_tokens}, "
+                f"всего {total_tokens if isinstance(total_tokens, int) else input_tokens + output_tokens} токенов"
+            )
+        else:
+            usage_summary = f"{model}: API вернул usage без стандартных счётчиков токенов"
     else:
         print("REGCLOUD_USAGE " + json.dumps({
             "model": model,
@@ -192,6 +206,7 @@ def run() -> int:
             "note": "API response did not include a usage object",
             "response_keys": sorted(response.keys()),
         }, ensure_ascii=False, sort_keys=True))
+        usage_summary = f"{model}: API не вернул данные usage"
     choices = response.get("choices")
     if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
         raise AgentError("Модель не вернула вариант ответа.")
@@ -217,7 +232,7 @@ def run() -> int:
         summary = summary or str(clarification).strip()
     if not patches:
         summary = summary or "Изменения не внесены. Для выполнения задачи требуется уточнение."
-        write_output(False, summary)
+        write_output(False, summary, usage_summary)
         print(summary)
         return 0
 
@@ -245,7 +260,7 @@ def run() -> int:
 
     page_path.write_text(updated_html, encoding="utf-8", newline="")
     summary = summary or "Изменение внесено."
-    write_output(True, summary)
+    write_output(True, summary, usage_summary)
     print("Изменения подготовлены в index.html. Операций замены: " + str(len(patches)) + ".")
     print(summary)
     return 0
