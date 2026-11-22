@@ -17,12 +17,9 @@ from typing import Any
 
 API_BASE = "https://ai.reg.cloud/v1"
 MODEL_PREFERENCES = (
-    "gpt-6.1-sol",
+    # Economical coding model; keep only coding-focused fallbacks.
+    "gpt-5.1-codex-mini",
     "gpt-5.3-codex",
-    "gpt-5.6-sol",
-    "gpt-5.5",
-    "claude-sonnet-5.5",
-    "deepseek-v4-pro",
 )
 MAX_PATCHES = 20
 MAX_PATCH_TEXT = 60_000
