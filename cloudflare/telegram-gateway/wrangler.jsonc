@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "zevnull-telegram-gateway",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-22",
+  "workers_dev": true,
+  "vars": {
+    "GITHUB_OWNER": "zevnull00",
+    "GITHUB_REPO": "kanban-goals",
+    "GITHUB_WORKFLOW": "telegram-codex.yml",
+    "GITHUB_REF": "main",
+    "TELEGRAM_ALLOWED_USER_IDS": "848638447,663743323",
+    "ACCEPT_MESSAGES_AFTER": "0"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "zevnull-telegram-state",
+      "database_id": "REPLACE_WITH_ID_FROM_CLOUDFLARE_D1"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}
