@@ -435,9 +435,34 @@ body[data-theme="dark"] .deadline-calendar-day{background:var(--control-bg);colo
  body.print-deadlines-mode .deadline-table td:last-child{display:none!important}
 }
 
+
+/* Серверная авторизация: интерфейс показывается только после успешного входа. */
+body:not(.app-ready)>header,
+body:not(.app-ready)>main,
+body:not(.app-ready)>footer{display:none!important}
+.auth-gate{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:22px;background:var(--paper)}
+.auth-card{display:grid;gap:12px;width:min(410px,100%);padding:26px;background:var(--white);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
+.auth-card h1{margin:0;font-size:1.5rem}
+.auth-card p{margin:0;color:var(--muted)}
+.auth-label{font-size:.88rem;font-weight:650;color:var(--muted)}
+.auth-card input{width:100%;min-height:46px}
+.auth-card .btn{min-height:46px}
+.auth-error{padding:10px 12px;border:1px solid #c98d83;border-radius:10px;background:rgba(201,141,131,.12);color:#9b4f46!important;font-weight:650}
+body[data-theme="dark"] .auth-error{color:#f0aaa0!important}
+
 </style>
 </head>
 <body>
+<div class="auth-gate" id="authGate">
+  <form class="auth-card" id="authForm" autocomplete="on">
+    <h1>Канбан для своих</h1>
+    <p>Введи пароль, чтобы открыть доску.</p>
+    <label class="auth-label" for="authPassword">Пароль</label>
+    <input id="authPassword" type="password" autocomplete="current-password" required autofocus>
+    <button class="btn primary" id="authSubmit" type="submit">Войти</button>
+    <p class="auth-error hidden" id="authError" role="alert" aria-live="assertive"></p>
+  </form>
+</div>
 <header class="topbar">
   <div>
     <h1>Канбан на 3 месяца</h1>
@@ -650,7 +675,7 @@ body[data-theme="dark"] .deadline-calendar-day{background:var(--control-bg);colo
     <p class="notice deadlines-footnote">Красный флажок — большой приоритет. Жёлтый — средний. Сами дедлайны не исчезают после переноса срока или создания задачи.</p>
   </section>
 </main>
-<footer><span data-motivation></span> Данные сохраняются в этом браузере; для переноса на другое устройство используй «Экспорт» и «Импорт».</footer>
+<footer><span data-motivation></span> Данные сохраняются на сервере и доступны всем, кто вошёл в канбан. Для резервной копии используй «Экспорт».</footer>
 
 <dialog id="goalDialog" aria-labelledby="goalDialogTitle">
   <div class="modal-head"><h2 id="goalDialogTitle">Новая цель</h2><button class="icon-btn" id="closeGoal" aria-label="Закрыть окно">✕</button></div>
@@ -737,9 +762,117 @@ body[data-theme="dark"] .deadline-calendar-day{background:var(--control-bg);colo
 </dialog>
 <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
+
 <script>
 (() => {
+  const gate = document.getElementById('authGate');
+  const form = document.getElementById('authForm');
+  const passwordInput = document.getElementById('authPassword');
+  const submitButton = document.getElementById('authSubmit');
+  const errorBox = document.getElementById('authError');
+
+  async function api(action, payload = {}) {
+    const response = await fetch('./api.php', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, ...payload })
+    });
+    let result;
+    try { result = await response.json(); }
+    catch (error) { throw new Error('Сервер вернул некорректный ответ. Проверь, что PHP включён на хостинге.'); }
+    if (!response.ok || !result.ok) {
+      const failure = new Error(result.message || 'Ошибка сервера.');
+      failure.status = response.status;
+      throw failure;
+    }
+    return result;
+  }
+
+  window.kanbanApi = api;
+
+  async function loadServerData() {
+    const loaded = await api('load');
+    if (loaded.initialized) {
+      try { localStorage.removeItem('kanbanGoals.v1'); } catch (error) {}
+      return { data: loaded.data };
+    }
+
+    // Однократный перенос старого состояния из браузера в серверное хранилище.
+    let initialData = {
+      schemaVersion: 3, cards: [], weekly: [], directionTasks: [],
+      projects: [], deadlines: [], customNotes: []
+    };
+    try {
+      const raw = localStorage.getItem('kanbanGoals.v1');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') initialData = parsed;
+      }
+    } catch (error) {
+      console.warn('Старые локальные данные не удалось прочитать; будет создано пустое серверное хранилище.', error);
+    }
+
+    const initialized = await api('initialize', { data: initialData });
+    try { localStorage.removeItem('kanbanGoals.v1'); } catch (error) {}
+    return { data: initialized.data };
+  }
+
+  window.kanbanBootPromise = (async () => {
+    try {
+      const session = await api('session');
+      let bootData;
+
+      if (session.authenticated) {
+        bootData = await loadServerData();
+      } else {
+        gate.classList.remove('hidden');
+        bootData = await new Promise(resolve => {
+          const handler = async event => {
+            event.preventDefault();
+            if (submitButton.disabled) return;
+            errorBox.classList.add('hidden');
+            submitButton.disabled = true;
+            const password = passwordInput.value;
+            passwordInput.value = '';
+            try {
+              await api('login', { password });
+              const loaded = await loadServerData();
+              form.removeEventListener('submit', handler);
+              resolve(loaded);
+            } catch (error) {
+              errorBox.textContent = error.status === 401
+                ? 'Ты не Даша!'
+                : 'Не удалось войти: ' + error.message;
+              errorBox.classList.remove('hidden');
+              passwordInput.focus();
+            } finally {
+              submitButton.disabled = false;
+            }
+          };
+          form.addEventListener('submit', handler);
+          passwordInput.focus();
+        });
+      }
+
+      gate.classList.add('hidden');
+      document.body.classList.add('app-ready');
+      return bootData;
+    } catch (error) {
+      gate.classList.remove('hidden');
+      errorBox.textContent = 'Не удалось связаться с сервером: ' + error.message;
+      errorBox.classList.remove('hidden');
+      return null;
+    }
+  })();
+})();
+</script>
+
+<script>
+(async () => {
   'use strict';
+  const boot = await window.kanbanBootPromise;
+  if (!boot || !boot.data) return;
 
   // Версия схемы и ключ локального хранилища.
   const STORAGE_KEY = 'kanbanGoals.v1';
@@ -760,7 +893,7 @@ body[data-theme="dark"] .deadline-calendar-day{background:var(--control-bg);colo
   const board = $('#board');
   const goalDialog = $('#goalDialog');
   const importDialog = $('#importDialog');
-  let state = loadState();
+  let state = loadState(boot.data);
   let editingId = null;
   let pendingImport = null;
   let toastTimer = null;
@@ -769,6 +902,8 @@ body[data-theme="dark"] .deadline-calendar-day{background:var(--control-bg);colo
   let deadlineAnchorDate = localDateString();
   let deadlineSortDirection = 'asc';
   let editingDeadlineId = null;
+  let serverSaveQueue = Promise.resolve();
+  let serverSaveErrorShown = false;
   const THEME_KEY = 'kanbanGoals.theme.v1';
   const NOTES_ADVICE_POOL = [
     'Запиши только следующий шаг — не весь маршрут.',
@@ -1018,49 +1153,47 @@ body[data-theme="dark"] .deadline-calendar-day{background:var(--control-bg);colo
     };
   }
   // Временное локальное хранение: данные находятся в localStorage этого браузера.
-  function loadState() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return emptyState();
-      const data = JSON.parse(raw);
-      if (!data || typeof data !== 'object' || !Array.isArray(data.cards) || !Array.isArray(data.weekly)) {
-        return emptyState();
-      }
-      return {
-        cards: data.cards.filter(validCard).map(normalizeCard),
-        weekly: data.weekly.filter(validWeekly).map(normalizeWeekly),
-        directionTasks: Array.isArray(data.directionTasks)
-          ? data.directionTasks.filter(validDirectionTask).map(normalizeDirectionTask) : [],
-        projects: Array.isArray(data.projects)
-          ? data.projects.filter(validProject).map(normalizeProject) : [],
-        deadlines: Array.isArray(data.deadlines)
-          ? data.deadlines.filter(validDeadline).map(normalizeDeadline) : [],
-        customNotes: Array.isArray(data.customNotes)
-          ? data.customNotes.filter(validCustomNote).map(normalizeCustomNote) : []
-      };
-    } catch (error) {
-      console.warn('Не удалось прочитать локальные данные:', error);
+  // Состояние загружается с сервера. localStorage используется только для разового переноса старых данных.
+  function loadState(data) {
+    if (!data || typeof data !== 'object' || !Array.isArray(data.cards) || !Array.isArray(data.weekly)) {
       return emptyState();
     }
+    return {
+      cards: data.cards.filter(validCard).map(normalizeCard),
+      weekly: data.weekly.filter(validWeekly).map(normalizeWeekly),
+      directionTasks: Array.isArray(data.directionTasks)
+        ? data.directionTasks.filter(validDirectionTask).map(normalizeDirectionTask) : [],
+      projects: Array.isArray(data.projects)
+        ? data.projects.filter(validProject).map(normalizeProject) : [],
+      deadlines: Array.isArray(data.deadlines)
+        ? data.deadlines.filter(validDeadline).map(normalizeDeadline) : [],
+      customNotes: Array.isArray(data.customNotes)
+        ? data.customNotes.filter(validCustomNote).map(normalizeCustomNote) : []
+    };
   }
 
+  // Снимки сохраняются последовательно, чтобы быстрые изменения не перезаписывали друг друга в обратном порядке.
   function saveState() {
-    try {
-      const payload = {
-        schemaVersion: SCHEMA_VERSION,
-        updatedAt: nowISO(),
-        cards: state.cards,
-        weekly: state.weekly,
-        directionTasks: state.directionTasks,
-        projects: state.projects,
-        deadlines: state.deadlines,
-        customNotes: state.customNotes
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    } catch (error) {
-      console.error('Ошибка локального сохранения:', error);
-      showToast('Не удалось сохранить данные в браузере. Сделай экспорт и проверь свободное место.');
-    }
+    const payload = JSON.parse(JSON.stringify({
+      schemaVersion: SCHEMA_VERSION,
+      updatedAt: nowISO(),
+      cards: state.cards,
+      weekly: state.weekly,
+      directionTasks: state.directionTasks,
+      projects: state.projects,
+      deadlines: state.deadlines,
+      customNotes: state.customNotes
+    }));
+    serverSaveQueue = serverSaveQueue.catch(() => undefined)
+      .then(() => window.kanbanApi('save', { data: payload }))
+      .then(() => { serverSaveErrorShown = false; })
+      .catch(error => {
+        console.error('Ошибка сохранения на сервере:', error);
+        if (!serverSaveErrorShown) {
+          showToast('Не удалось сохранить данные на сервере. Проверь соединение и обнови страницу.');
+          serverSaveErrorShown = true;
+        }
+      });
   }
 
   function escapeHTML(value) {
