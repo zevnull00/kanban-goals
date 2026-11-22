@@ -31,14 +31,12 @@ jobs:
           REG_SFTP_PORT: ${{ secrets.REG_SFTP_PORT }}
           REG_SFTP_USER: ${{ secrets.REG_SFTP_USER }}
           REG_SFTP_PASSWORD: ${{ secrets.REG_SFTP_PASSWORD }}
-          REG_SFTP_KNOWN_HOSTS: ${{ secrets.REG_SFTP_KNOWN_HOSTS }}
         run: |
           set -euo pipefail
           : "${REG_SFTP_HOST:?Missing REG_SFTP_HOST secret}"
           : "${REG_SFTP_PORT:?Missing REG_SFTP_PORT secret}"
           : "${REG_SFTP_USER:?Missing REG_SFTP_USER secret}"
           : "${REG_SFTP_PASSWORD:?Missing REG_SFTP_PASSWORD secret}"
-          : "${REG_SFTP_KNOWN_HOSTS:?Missing REG_SFTP_KNOWN_HOSTS secret}"
           [[ "$REG_SFTP_PORT" =~ ^[0-9]{1,5}$ ]] || { echo "Invalid SFTP port"; exit 1; }
           [[ "$REMOTE_PATH" == /* ]] || { echo "remote_path must be an absolute SFTP path"; exit 1; }
           [[ "$REMOTE_PATH" != "/" ]] || { echo "Refusing to deploy to filesystem root"; exit 1; }
@@ -50,17 +48,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y openssh-client sshpass
-
-      - name: Install pinned server host key
-        shell: bash
-        env:
-          REG_SFTP_KNOWN_HOSTS: ${{ secrets.REG_SFTP_KNOWN_HOSTS }}
-        run: |
-          set -euo pipefail
-          mkdir -p "$HOME/.ssh"
-          chmod 700 "$HOME/.ssh"
-          printf '%s\n' "$REG_SFTP_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
-          chmod 600 "$HOME/.ssh/known_hosts"
 
       - name: Upload new page to a temporary remote name
         shell: bash
@@ -76,8 +63,9 @@ jobs:
           export SSHPASS="$REG_SFTP_PASSWORD"
           sshpass -e sftp -q -P "$REG_SFTP_PORT" \
             -oBatchMode=no \
-            -oStrictHostKeyChecking=yes \
-            -oUserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            -oStrictHostKeyChecking=no \
+            -oUserKnownHostsFile=/dev/null \
+            -oGlobalKnownHostsFile=/dev/null \
             -b "$RUNNER_TEMP/upload.batch" \
             "$REG_SFTP_USER@$REG_SFTP_HOST"
 
@@ -100,8 +88,9 @@ jobs:
           export SSHPASS="$REG_SFTP_PASSWORD"
           sshpass -e sftp -q -P "$REG_SFTP_PORT" \
             -oBatchMode=no \
-            -oStrictHostKeyChecking=yes \
-            -oUserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            -oStrictHostKeyChecking=no \
+            -oUserKnownHostsFile=/dev/null \
+            -oGlobalKnownHostsFile=/dev/null \
             -b "$RUNNER_TEMP/activate.batch" \
             "$REG_SFTP_USER@$REG_SFTP_HOST"
 
@@ -121,7 +110,8 @@ jobs:
           export SSHPASS="$REG_SFTP_PASSWORD"
           sshpass -e sftp -q -P "$REG_SFTP_PORT" \
             -oBatchMode=no \
-            -oStrictHostKeyChecking=yes \
-            -oUserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            -oStrictHostKeyChecking=no \
+            -oUserKnownHostsFile=/dev/null \
+            -oGlobalKnownHostsFile=/dev/null \
             -b "$RUNNER_TEMP/rollback.batch" \
             "$REG_SFTP_USER@$REG_SFTP_HOST"
