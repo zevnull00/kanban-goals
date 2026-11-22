@@ -176,7 +176,8 @@ def run() -> int:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        "max_completion_tokens": 12000,
+        "temperature": 0.1,
+        "max_tokens": 12000,
     })
     choices = response.get("choices")
     if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
