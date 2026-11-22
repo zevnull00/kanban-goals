@@ -80,14 +80,14 @@ jobs:
         run: |
           set -euo pipefail
           {
-            printf '%s\\n' 'pwd'
-            printf '%s\\n' '-ls -la .'
-            printf '%s\\n' '-ls -la /'
-            printf '%s\\n' '-ls -la /www'
-            printf '%s\\n' '-ls -la www'
-            printf '%s\\n' '-ls -la www/zevnull.ru'
-            printf '%s\\n' '-ls -la /zevnull.ru'
-            printf '%s\\n' '-ls -la ${REMOTE_PATH%/}'
+            printf '%s\n' 'pwd'
+            printf '%s\n' '-ls -la .'
+            printf '%s\n' '-ls -la /'
+            printf '%s\n' '-ls -la /www'
+            printf '%s\n' '-ls -la www'
+            printf '%s\n' '-ls -la www/zevnull.ru'
+            printf '%s\n' '-ls -la /zevnull.ru'
+            printf '%s\n' "-ls -la ${REMOTE_PATH%/}"
           } > "$RUNNER_TEMP/diagnose.batch"
           export SSHPASS="$REG_SFTP_PASSWORD"
           sshpass -e sftp -q -P "$REG_SFTP_PORT" \
