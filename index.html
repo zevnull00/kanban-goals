@@ -874,8 +874,7 @@ body[data-theme="dark"] .auth-error{color:#f0aaa0!important}
   const boot = await window.kanbanBootPromise;
   if (!boot || !boot.data) return;
 
-  // Версия схемы и ключ локального хранилища.
-  const STORAGE_KEY = 'kanbanGoals.v1';
+  // Версия схемы данных, сохраняемых на сервере.
   const SCHEMA_VERSION = 3;
   const DIRECTIONS = {
     career: { label: 'Карьера', color: 'var(--career)' },
