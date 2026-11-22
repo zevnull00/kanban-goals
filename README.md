@@ -37,6 +37,45 @@
 
 На хостинге должен быть включён PHP 7.3 или новее. Каталог на уровень выше корневой папки сайта должен быть доступен PHP для создания закрытого хранилища данных. API отклоняет входящие запросы по обычному HTTP: открывай сайт по HTTPS. При первой проверке откройте сайт по HTTPS, введите пароль и убедитесь, что доска загрузилась. После этого проверьте создание тестовой заметки, обновите страницу и убедитесь, что заметка осталась.
 
+## Telegram-бот для изменений сайта
+
+Поток: Telegram webhook → GitHub Actions workflow `telegram-codex.yml` → OpenAI Codex Action → проверка → commit в `main` → reusable workflow `deploy-reg-ru.yml` → уведомление в Telegram.
+
+В репозитории находятся `telegram-webhook.php`, `AGENTS.md` и `.github/workflows/telegram-codex.yml`. Codex ограничен изменением `index.html`; серверный PHP API, webhook, приватные конфигурации и workflow защищены от изменений со стороны агента.
+
+### GitHub Actions secrets
+
+В Settings → Secrets and variables → Actions добавьте:
+
+- `OPENAI_API_KEY` — ключ OpenAI API;
+- `TELEGRAM_BOT_TOKEN` — токен бота от BotFather.
+
+Существующие `REG_SFTP_HOST`, `REG_SFTP_PORT`, `REG_SFTP_USER` и `REG_SFTP_PASSWORD` используются повторно для публикации.
+
+### Приватный файл на REG.RU
+
+Создайте `kanban-private/telegram-config.php` на хостинге. Это файл вне Git; не загружайте его в репозиторий:
+
+```php
+<?php
+return [
+    'telegram_bot_token' => 'ТОКЕН_БОТА',
+    'telegram_webhook_secret' => 'СЛУЧАЙНАЯ_СТРОКА_ДЛЯ_WEBHOOK',
+    'telegram_allowed_user_ids' => ['TELEGRAM_ID_1', 'TELEGRAM_ID_2'],
+    'github_token' => 'FINE_GRAINED_GITHUB_TOKEN',
+    'github_owner' => 'zevnull00',
+    'github_repo' => 'kanban-goals',
+    'github_workflow' => 'telegram-codex.yml',
+    'github_ref' => 'main',
+];
+```
+
+Для Fine-grained personal access token выберите только репозиторий `zevnull00/kanban-goals` и разрешение Repository permissions → Actions: Read and write. Оно нужно только для запуска workflow_dispatch.
+
+После загрузки `telegram-webhook.php` установите webhook Telegram методом `setWebhook`, передав URL `https://zevnull.ru/telegram-webhook.php`, тот же `secret_token` и `allowed_updates: ["message"]`.
+
+**Не помещайте токены в GitHub-файлы, сообщения Telegram или код сайта.** Владелец и девушка должны отправить `/start` боту; если ID пока не разрешён, бот вернёт собственный Telegram ID для внесения в приватный конфиг.
+
 ## Разработка
 
 Для локального запуска с серверным хранением нужен PHP и файл `kanban-private/config.php`. Простое открытие `index.html` как файла больше не поддерживает сохранение данных.
