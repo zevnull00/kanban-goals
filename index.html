@@ -763,6 +763,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
             <option value="medium">🟡 Средний приоритет</option>
           </select>
         </div>
+        <div class="field full"><label for="deadlineComment">Пояснения</label><textarea id="deadlineComment" maxlength="2000" rows="3" placeholder="Дополнительная информация по дедлайну"></textarea></div>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn danger hidden" id="deleteDeadlineBtn">Удалить дедлайн</button>
@@ -1421,6 +1422,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
     const dir = DIRECTIONS[currentDirection];
     const projects = state.projects.filter(project => project.direction === currentDirection);
     const tasks = state.directionTasks.filter(task => task.direction === currentDirection);
+    const unassignedCards = state.cards.filter(card => card.direction === currentDirection && !card.projectId);
     const cardCount = state.cards.filter(card => card.direction === currentDirection).length;
 
     content.innerHTML = `<section class="direction-panel" style="--direction:${dir.color}" aria-label="${escapeHTML(dir.label)}">
@@ -1433,7 +1435,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
       </form>
       <div class="project-list">
         ${projects.length ? projects.map(project => `
-          <article class="project-card" data-project-id="${escapeHTML(project.id)}">
+          <article class="project-card" data-project-id="${escapeHTML(project.id)}" style="--project-color:${dir.color}">
             <div class="project-card-head"><div><h3>${escapeHTML(project.name)} <span class="count">${project.tasks.length} задач</span></h3>
               ${project.description ? `<p class="project-description">${escapeHTML(project.description)}</p>` : ''}</div>
               <div class="project-actions"><button class="icon-btn" data-project-edit="${escapeHTML(project.id)}">Изменить проект</button>
@@ -1441,22 +1443,27 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
             </div>
             <form class="project-task-form" data-project-task-form="${escapeHTML(project.id)}">
               <input name="title" maxlength="180" required placeholder="Добавить задачу в проект…" aria-label="Новая задача проекта">
+              <textarea name="comment" maxlength="2000" rows="1" placeholder="Пояснение к задаче (необязательно)" aria-label="Пояснение к новой задаче проекта"></textarea>
               <button class="btn" type="submit">＋ Добавить задачу</button>
             </form>
-            ${project.tasks.length ? `<ul class="project-task-list">${project.tasks.map(task => {
+            ${project.tasks.length ? `<ul class="project-task-list">${project.tasks.map((task, taskIndex) => {
               const card = projectTaskCard(task);
               const done = card ? card.column === 'done' : task.done;
               const status = card ? (COLUMNS.find(col => col.id === card.column)?.title || 'На доске') : (task.done ? 'Выполнено' : 'В проекте');
-              return `<li class="project-task-row ${done ? 'done' : ''}">
+              return `<li class="project-task-row ${done ? 'done' : ''}" draggable="true" data-project-task-row="${escapeHTML(task.id)}" data-project-id="${escapeHTML(project.id)}" data-project-task-index="${taskIndex}">
                 <div class="project-task-main">
                   <input type="checkbox" data-project-task-toggle="${escapeHTML(task.id)}" ${done ? 'checked' : ''} ${card ? 'disabled title="Статус связанной задачи меняется на доске"' : ''} aria-label="Задача выполнена">
                   <div><div class="project-task-title">${escapeHTML(task.title)}</div>
+                    ${task.comment ? `<div class="task-comment">${escapeHTML(task.comment)}</div>` : ''}
                     ${task.dueDate ? `<div class="project-task-meta">Дедлайн: ${escapeHTML(formatDate(task.dueDate))} ${task.priority === 'high' ? '🔴' : task.priority === 'medium' ? '🟡' : ''}</div>` : ''}
                     ${task.completedAt && done ? `<div class="project-task-meta">Выполнено: ${escapeHTML(formatDateTime(task.completedAt))}</div>` : ''}</div>
                 </div>
                 <div class="project-task-actions">
                   <span class="project-task-status ${card ? 'on-board' : ''}">${escapeHTML(status)}</span>
+                  <button class="icon-btn project-task-move" data-project-task-move="${escapeHTML(task.id)}" data-project-id="${escapeHTML(project.id)}" data-target-index="${taskIndex-1}" title="Переместить выше" aria-label="Переместить задачу выше" ${taskIndex===0?'disabled':''}>↑</button>
+                  <button class="icon-btn project-task-move" data-project-task-move="${escapeHTML(task.id)}" data-project-id="${escapeHTML(project.id)}" data-target-index="${taskIndex+1}" title="Переместить ниже" aria-label="Переместить задачу ниже" ${taskIndex===project.tasks.length-1?'disabled':''}>↓</button>
                   ${card ? `<button class="icon-btn" data-project-task-open="${escapeHTML(task.id)}">Открыть на доске</button>` : `<button class="icon-btn" data-project-task-board="${escapeHTML(task.id)}">На доску</button>`}
+                  <button class="icon-btn" data-project-task-to-direction="${escapeHTML(task.id)}" title="Убрать из проекта в направление">В направление</button>
                   <button class="icon-btn" data-project-task-edit="${escapeHTML(task.id)}">Изменить</button>
                   <button class="icon-btn danger" data-project-task-delete="${escapeHTML(task.id)}">Удалить</button>
                 </div>
@@ -1464,16 +1471,125 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
             }).join('')}</ul>` : `<div class="empty">В проекте пока нет задач. Добавь первую задачу выше.</div>`}
           </article>`).join('') : `<div class="empty">В этом направлении пока нет проектов. Создай проект и добавь в него задачи.</div>`}
       </div>
-      ${tasks.length ? `<section class="legacy-tasks"><h3>Задачи направления без проекта</h3>
-        <ul class="direction-task-list">${tasks.map(task => `<li class="direction-task ${task.done ? 'done' : ''}">
-          <label class="task-check"><input type="checkbox" data-task-toggle="${escapeHTML(task.id)}" ${task.done ? 'checked' : ''}><span class="task-title">${escapeHTML(task.title)}</span></label>
-          <button class="icon-btn danger" type="button" data-task-delete="${escapeHTML(task.id)}">Удалить</button>
-        </li>`).join('')}</ul></section>` : ''}
+      <section class="legacy-tasks">
+        <h3>Задачи направления без проекта</h3>
+        <form class="direction-task-form" id="directionTaskForm">
+          <input name="title" maxlength="180" required placeholder="Новая задача в направлении…" aria-label="Новая задача направления">
+          <textarea name="comment" maxlength="2000" rows="1" placeholder="Пояснение к задаче (необязательно)" aria-label="Пояснение к задаче направления"></textarea>
+          <button class="btn" type="submit">＋ Добавить</button>
+        </form>
+        <ul class="direction-task-list">
+          ${unassignedCards.map(card => `<li class="direction-task direction-card-row ${card.column === 'done' ? 'done' : ''}">
+            <div class="direction-task-content">
+              <strong class="task-title">${escapeHTML(card.title)}</strong>
+              ${card.comment ? `<div class="task-comment">${escapeHTML(card.comment)}</div>` : ''}
+              <div class="project-task-meta">На доске: ${escapeHTML(COLUMNS.find(col => col.id === card.column)?.title || '')}</div>
+            </div>
+            <div class="direction-task-actions">
+              <button class="icon-btn" type="button" data-direction-card-open="${escapeHTML(card.id)}">Открыть на доске</button>
+              <button class="icon-btn" type="button" data-direction-card-edit="${escapeHTML(card.id)}">Изменить</button>
+            </div>
+          </li>`).join('')}
+          ${tasks.map(task => `<li class="direction-task ${task.done ? 'done' : ''}">
+            <div class="direction-task-content">
+              <label class="task-check"><input type="checkbox" data-task-toggle="${escapeHTML(task.id)}" ${task.done ? 'checked' : ''}><span class="task-title">${escapeHTML(task.title)}</span></label>
+              ${task.comment ? `<div class="task-comment">${escapeHTML(task.comment)}</div>` : ''}
+            </div>
+            <div class="direction-task-actions">
+              <button class="icon-btn" type="button" data-task-edit="${escapeHTML(task.id)}">Изменить</button>
+              <button class="icon-btn danger" type="button" data-task-delete="${escapeHTML(task.id)}">Удалить</button>
+            </div>
+          </li>`).join('')}
+          ${!tasks.length && !unassignedCards.length ? '<li class="empty">Задач без проекта пока нет.</li>' : ''}
+        </ul>
+      </section>
     </section>`;
 
     tabs.querySelectorAll('[data-direction-tab]').forEach(btn => btn.addEventListener('click', () => {
       currentDirection = btn.dataset.directionTab;
       renderDirections();
+    }));
+
+    function reorderProjectTask(projectId, taskId, targetIndex) {
+      const project = state.projects.find(item => item.id === projectId);
+      if (!project) return;
+      const sourceIndex = project.tasks.findIndex(item => item.id === taskId);
+      if (sourceIndex < 0) return;
+      const [task] = project.tasks.splice(sourceIndex, 1);
+      const safeIndex = Math.max(0, Math.min(project.tasks.length, targetIndex));
+      project.tasks.splice(safeIndex, 0, task);
+      project.updatedAt = nowISO();
+      saveState();
+      renderDirections();
+    }
+    content.querySelectorAll('[data-project-task-move]').forEach(btn => btn.addEventListener('click', () => {
+      reorderProjectTask(btn.dataset.projectId, btn.dataset.projectTaskMove, Number(btn.dataset.targetIndex));
+    }));
+    content.querySelectorAll('[data-project-task-row]').forEach(row => {
+      row.addEventListener('dragstart', event => {
+        event.dataTransfer.setData('text/plain', row.dataset.projectTaskRow);
+        event.dataTransfer.setData('application/x-kanban-project', row.dataset.projectId);
+        event.dataTransfer.effectAllowed = 'move';
+        row.classList.add('dragging');
+      });
+      row.addEventListener('dragend', () => {
+        row.classList.remove('dragging');
+        content.querySelectorAll('.drop-target').forEach(item => item.classList.remove('drop-target'));
+      });
+      row.addEventListener('dragover', event => {
+        if (event.dataTransfer.types.includes('application/x-kanban-project')) {
+          event.preventDefault();
+          row.classList.add('drop-target');
+        }
+      });
+      row.addEventListener('dragleave', () => row.classList.remove('drop-target'));
+      row.addEventListener('drop', event => {
+        const projectId = event.dataTransfer.getData('application/x-kanban-project');
+        const taskId = event.dataTransfer.getData('text/plain');
+        if (projectId !== row.dataset.projectId || !taskId || taskId === row.dataset.projectTaskRow) return;
+        event.preventDefault();
+        const rect = row.getBoundingClientRect();
+        let targetIndex = Number(row.dataset.projectTaskIndex) + (event.clientY > rect.top + rect.height / 2 ? 1 : 0);
+        const sourceIndex = state.projects.find(item => item.id === projectId)?.tasks.findIndex(item => item.id === taskId) ?? -1;
+        if (sourceIndex >= 0 && sourceIndex < targetIndex) targetIndex--;
+        reorderProjectTask(projectId, taskId, targetIndex);
+      });
+    });
+
+    $('#directionTaskForm').addEventListener('submit', event => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const title = form.elements.title.value.trim();
+      const comment = form.elements.comment.value.trim();
+      if (!title) return;
+      const stamp = nowISO();
+      state.directionTasks.push({ id: uid(), direction: currentDirection, title, comment, done: false, completedAt: '', createdAt: stamp, updatedAt: stamp });
+      saveState(); renderDirections(); showToast('Задача добавлена в направление.');
+    });
+    content.querySelectorAll('[data-direction-card-open]').forEach(btn => btn.addEventListener('click', () => {
+      const card = state.cards.find(item => item.id === btn.dataset.directionCardOpen);
+      if (!card) return;
+      const date = card.completedAt || card.createdAt || new Date().toISOString();
+      $('#weekDate').value = mondayOf(localDateString(new Date(date)));
+      switchView('board'); renderWeek(); render();
+    }));
+    content.querySelectorAll('[data-direction-card-edit]').forEach(btn => btn.addEventListener('click', () => {
+      const card = state.cards.find(item => item.id === btn.dataset.directionCardEdit);
+      if (!card) return;
+      const date = card.completedAt || card.createdAt || new Date().toISOString();
+      $('#weekDate').value = mondayOf(localDateString(new Date(date)));
+      switchView('board'); renderWeek(); render(); openGoal(card.id);
+    }));
+    content.querySelectorAll('[data-task-edit]').forEach(btn => btn.addEventListener('click', () => {
+      const task = state.directionTasks.find(item => item.id === btn.dataset.taskEdit);
+      if (!task) return;
+      const title = prompt('Текст задачи:', task.title);
+      if (title === null) return;
+      if (!title.trim()) { alert('Текст задачи не может быть пустым.'); return; }
+      const comment = prompt('Пояснение к задаче:', task.comment || '');
+      if (comment === null) return;
+      task.title = title.trim(); task.comment = comment.trim(); task.updatedAt = nowISO();
+      saveState(); renderDirections(); renderReport();
     }));
 
     $('#projectCreateForm').addEventListener('submit', event => {
@@ -1490,8 +1606,10 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
       event.preventDefault();
       const project = state.projects.find(item => item.id === form.dataset.projectTaskForm);
       const title = form.elements.title.value.trim();
+      const comment = form.elements.comment.value.trim();
       if (!project || !title) return;
-      const stamp = nowISO();      project.tasks.push({ id: uid(), title, done: false, completedAt: '', boardCardId: '', createdAt: stamp, updatedAt: stamp });
+      const stamp = nowISO();
+      project.tasks.push({ id: uid(), title, comment, done: false, completedAt: '', boardCardId: '', createdAt: stamp, updatedAt: stamp });
       project.updatedAt = stamp;
       saveState(); renderDirections(); showToast('Задача добавлена в проект.');
     }));
@@ -1513,8 +1631,19 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
     content.querySelectorAll('[data-project-delete]').forEach(btn => btn.addEventListener('click', () => {
       const project = state.projects.find(item => item.id === btn.dataset.projectDelete);
       if (!project || !confirm(`Удалить проект «${project.name}»? Связанные карточки на доске останутся, но потеряют связь с проектом.`)) return;
-      state.cards.filter(card => card.projectId === project.id).forEach(card => {
-        card.projectName = project.name; card.projectId = ''; card.projectTaskId = '';
+      project.tasks.forEach(task => {
+        const card = projectTaskCard(task);
+        if (card) {
+          card.projectName = ''; card.projectId = ''; card.projectTaskId = '';
+        } else {
+          state.directionTasks.push({
+            id: uid(), direction: project.direction, title: task.title, comment: task.comment || '',
+            done: task.done, completedAt: task.completedAt || '', createdAt: task.createdAt || nowISO(), updatedAt: nowISO()
+          });
+        }
+      });
+      state.deadlines.filter(item => item.projectId === project.id).forEach(item => {
+        item.projectId = ''; item.projectName = ''; item.projectTaskId = ''; item.updatedAt = nowISO();
       });
       state.projects = state.projects.filter(item => item.id !== project.id);
       saveState(); renderDirections(); render(); renderReport(); showToast('Проект удалён.');
@@ -1535,6 +1664,30 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
       saveState(); renderDirections(); render(); showToast('Задача отправлена на доску.');
     }));
 
+    content.querySelectorAll('[data-project-task-to-direction]').forEach(btn => btn.addEventListener('click', () => {
+      for (const project of state.projects) {
+        const task = project.tasks.find(item => item.id === btn.dataset.projectTaskToDirection);
+        if (!task) continue;
+        const card = projectTaskCard(task);
+        if (card) {
+          card.projectId = ''; card.projectName = ''; card.projectTaskId = ''; card.updatedAt = nowISO();
+        } else {
+          state.directionTasks.push({
+            id: uid(), direction: project.direction, title: task.title, comment: task.comment || '',
+            done: task.done, completedAt: task.completedAt || '', createdAt: task.createdAt || nowISO(), updatedAt: nowISO()
+          });
+        }
+        state.deadlines.filter(item => item.projectTaskId === task.id).forEach(item => {
+          item.projectId = ''; item.projectName = ''; item.projectTaskId = ''; item.updatedAt = nowISO();
+        });
+        project.tasks = project.tasks.filter(item => item.id !== task.id);
+        project.updatedAt = nowISO();
+        saveState(); renderDirections(); render(); renderDeadlines(); renderReport();
+        showToast('Задача перенесена в направление.');
+        return;
+      }
+    }));
+
     content.querySelectorAll('[data-project-task-open]').forEach(btn => btn.addEventListener('click', () => {
       const taskId = btn.dataset.projectTaskOpen;
       const card = state.cards.find(item => item.projectTaskId === taskId);
@@ -1551,9 +1704,11 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
         const title = prompt('Текст задачи:', task.title);
         if (title === null) return;
         if (!title.trim()) { alert('Текст задачи не может быть пустым.'); return; }
-        task.title = title.trim(); task.updatedAt = nowISO();
+        const comment = prompt('Пояснение к задаче:', task.comment || '');
+        if (comment === null) return;
+        task.title = title.trim(); task.comment = comment.trim(); task.updatedAt = nowISO();
         const card = projectTaskCard(task);
-        if (card) { card.title = task.title; card.updatedAt = nowISO(); }
+        if (card) { card.title = task.title; card.comment = task.comment; card.updatedAt = nowISO(); }
         saveState(); renderDirections(); render(); renderReport();
         return;
       }
@@ -1808,6 +1963,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
       task.dueDate = deadline.dueDate;
       task.priority = deadline.priority;
       task.deadlineId = deadline.id;
+      task.comment = deadline.comment || '';
       task.updatedAt = nowISO();
     } else {
       if (previousTask && previousProject) {
@@ -1819,7 +1975,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
         done: Boolean(previousTask?.done),
         completedAt: previousTask?.completedAt || '',
         boardCardId: existingBoardCardId, dueDate: deadline.dueDate, priority: deadline.priority,
-        deadlineId: deadline.id, createdAt: nowISO(), updatedAt: nowISO()
+        deadlineId: deadline.id, comment: deadline.comment || '', createdAt: nowISO(), updatedAt: nowISO()
       };
       target.tasks.push(task);
       target.updatedAt = nowISO();
@@ -1833,6 +1989,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
         card.projectId = target.id;
         card.projectName = target.name;
         card.projectTaskId = task.id;
+        card.comment = deadline.comment || '';
         card.updatedAt = nowISO();
       }
       deadline.boardCardId = existingBoardCardId;
@@ -1858,7 +2015,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
       const stamp = nowISO();
       card = {
         id: uid(), title: deadline.title, direction: deadline.direction,
-        why: '', minVersion: '', metric: '', firstStep: '', column: 'backlog',
+        why: '', minVersion: '', metric: '', firstStep: '', comment: deadline.comment || '', column: 'backlog',
         createdAt: stamp, updatedAt: stamp, firstStepDone: false, completedAt: '',
         statusHistory: [{ column: 'backlog', at: stamp }],
         projectId: project?.id || '', projectName: project?.name || '', projectTaskId: task?.id || ''
@@ -1871,12 +2028,14 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
       task.dueDate = deadline.dueDate;
       task.priority = deadline.priority;
       task.deadlineId = deadline.id;
+      task.comment = deadline.comment || '';
       task.updatedAt = nowISO();
       card.title = deadline.title;
       card.direction = project?.direction || deadline.direction;
       card.projectId = project?.id || '';
       card.projectName = project?.name || '';
       card.projectTaskId = task.id;
+      card.comment = deadline.comment || '';
       card.updatedAt = nowISO();
     } else if (project) {
       task = {
@@ -1931,6 +2090,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
         <td data-label="Дата">${escapeHTML(formatDate(item.dueDate))}</td>
         <td data-label="Задача">
           <strong>${escapeHTML(item.title)}</strong>${linked}
+          ${item.comment ? `<div class="task-comment deadline-comment">${escapeHTML(item.comment)}</div>` : ''}
         </td>
         <td data-label="Проект">${escapeHTML(item.projectName || '—')}</td>
         <td data-label="Направление">${escapeHTML(DIRECTIONS[item.direction]?.label || '—')}</td>
@@ -2015,6 +2175,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
     $('#deadlineDirection').value = item?.direction || 'career';
     populateDeadlineProjects($('#deadlineDirection').value, item?.projectId || '');
     $('#deadlinePriority').value = item?.priority || '';
+    $('#deadlineComment').value = item?.comment || '';
     $('#deleteDeadlineBtn').classList.toggle('hidden', !item);
     $('#deadlineDialog').showModal();
   }
@@ -2030,12 +2191,13 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
     if (!title || !dueDate) return;
     const fields = {
       title, dueDate, direction: $('#deadlineDirection').value,
-      priority: $('#deadlinePriority').value, projectId: $('#deadlineProject').value
+      priority: $('#deadlinePriority').value, projectId: $('#deadlineProject').value,
+      comment: $('#deadlineComment').value.trim()
     };
     let item = state.deadlines.find(deadline => deadline.id === editingDeadlineId);
     const stamp = nowISO();
     if (item) {
-      Object.assign(item, { title, dueDate, direction: fields.direction, priority: fields.priority, updatedAt: stamp });
+      Object.assign(item, { title, dueDate, direction: fields.direction, priority: fields.priority, comment: fields.comment, updatedAt: stamp });
       if (fields.projectId) linkDeadlineToProject(item, fields.projectId);
       else {
         for (const project of state.projects) {
