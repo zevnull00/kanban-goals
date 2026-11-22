@@ -1,0 +1,1480 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Канбан целей на 6 месяцев</title>
+<style>
+:root{
+  --paper:#faf7f0;--paper-deep:#f1ebdf;--ink:#393a35;--muted:#77786f;
+  --line:#e8e0d3;--white:#fffdf8;--shadow:0 5px 18px rgba(67,56,39,.07);
+  --career:#8d9fbd;--health:#91aa91;--study:#c3a17e;--home:#b28fa8;
+  --green:#7caa83;--yellow:#d7b66f;--red:#c98d83;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:3px solid #8d9fbd;outline-offset:2px}
+.topbar{max-width:1500px;margin:auto;padding:28px 28px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
+h1{font-size:clamp(1.65rem,3vw,2.25rem);line-height:1.15;margin:0 0 7px;font-weight:700;letter-spacing:-.04em}
+.subtitle{color:var(--muted);margin:0}
+.actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.btn{border:1px solid var(--line);background:var(--white);color:var(--ink);border-radius:12px;padding:9px 13px;box-shadow:0 2px 5px rgba(67,56,39,.03)}
+.btn:hover{background:#f4efe5}
+.btn.primary{background:#596e5e;color:white;border-color:#596e5e}
+.btn.primary:hover{background:#485c4d}
+.btn.subtle{box-shadow:none;background:transparent}
+main{max-width:1500px;margin:auto;padding:12px 28px 40px}
+.view-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 18px;padding:4px;background:#f4f0e8;border:1px solid var(--line);border-radius:14px;width:fit-content}
+.view-tab{border:0;background:transparent;border-radius:10px;padding:8px 13px;color:var(--muted);font-weight:650}
+.view-tab:hover{color:var(--ink)}
+.view-tab.active{background:var(--white);color:var(--ink);box-shadow:0 2px 5px rgba(67,56,39,.06)}
+.top-panels{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,1fr);gap:14px;margin:8px 0 20px}
+.panel{background:rgba(255,253,248,.8);border:1px solid var(--line);border-radius:17px;padding:15px 17px}
+.panel h2{font-size:1rem;margin:0 0 8px}
+.reminders{display:flex;flex-wrap:wrap;gap:8px 18px;color:var(--muted);font-size:.94rem}
+.reminders span:before{content:"✳";color:#b59b75;margin-right:7px}
+.week-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.week-controls input[type=date]{max-width:155px}
+input,select,textarea{border:1px solid #ded7ca;background:#fffefa;border-radius:10px;padding:9px 10px;color:var(--ink);width:100%}
+textarea{resize:vertical;min-height:68px}
+.week-controls select{width:auto;min-width:125px}
+.week-note{margin-top:9px}
+.signal-hint{font-size:.82rem;color:var(--muted);margin:8px 0 0}
+.signal-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
+.signal-green{background:var(--green)}.signal-yellow{background:var(--yellow)}.signal-red{background:var(--red)}.signal-none{background:#d8d0c3}
+.filterbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 14px}
+.filterbar label{color:var(--muted);font-size:.92rem}
+.filterbar select{width:auto;min-width:155px}
+.board{display:grid;grid-template-columns:repeat(4,minmax(245px,1fr));gap:13px;align-items:start}
+.column{background:#f4f0e8;border:1px solid #ebe4d8;border-radius:17px;padding:12px;min-height:290px}
+.column.drag-over{background:#eee9de;border-color:#b9aa91}
+.column-head{padding:4px 4px 12px}
+.column-head h2{font-size:1.04rem;margin:0;font-weight:700}
+.column-head p{font-size:.79rem;line-height:1.35;color:var(--muted);margin:4px 0 0}
+.count{font-size:.78rem;color:var(--muted);font-weight:500;margin-left:5px}
+.cards{display:flex;flex-direction:column;gap:10px;min-height:80px}
+.goal-card{position:relative;background:var(--white);border:1px solid #ece5d9;border-radius:13px;padding:13px 13px 11px 16px;box-shadow:var(--shadow);cursor:grab;overflow:hidden}
+.goal-card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--direction)}
+.goal-card:active{cursor:grabbing}
+.goal-card.dragging{opacity:.45}
+.card-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.card-title{font-weight:680;line-height:1.3;margin:0 0 7px;overflow-wrap:anywhere}
+.tag{font-size:.72rem;border-radius:20px;padding:3px 8px;white-space:nowrap;background:color-mix(in srgb,var(--direction) 18%,white);color:#55584f}
+.card-detail{font-size:.84rem;color:#66685f;margin:7px 0 0;overflow-wrap:anywhere}
+.card-detail b{color:#55574f;font-weight:650}
+.card-detail:empty{display:none}
+.card-actions{display:flex;align-items:center;gap:5px;flex-wrap:wrap;border-top:1px solid #f0ebe2;margin-top:11px;padding-top:8px}
+.icon-btn{border:1px solid var(--line);background:#fffefa;border-radius:8px;padding:5px 8px;color:#62645b;font-size:.83rem}
+.icon-btn:hover{background:#f2eee5}
+.icon-btn:disabled{opacity:.35;cursor:not-allowed}
+.card-actions .spacer{flex:1}
+.step-check{font-size:.8rem;color:#68796a;display:flex;gap:6px;align-items:center;margin-top:9px}
+.step-check input{width:auto;accent-color:#78927b}
+.empty{border:1px dashed #d8d0c3;border-radius:12px;padding:18px 12px;text-align:center;color:#89877e;font-size:.85rem}
+.column-add{width:100%;margin-top:10px;border:1px dashed #d4cbbb;background:transparent;border-radius:10px;padding:8px;color:#77766d}
+.column-add:hover{background:rgba(255,255,255,.45)}
+.first-empty{text-align:center;padding:45px 20px;background:rgba(255,253,248,.65);border:1px dashed #d9d0c1;border-radius:18px;margin:14px 0}
+.first-empty h2{margin:0 0 7px;font-size:1.2rem}.first-empty p{color:var(--muted);margin:0 auto 17px;max-width:490px}
+.section-head{display:flex;justify-content:space-between;gap:12px;margin:2px 0 14px}
+.section-head h2{font-size:1.2rem;margin:0 0 5px}
+.section-head p{margin:0;color:var(--muted)}
+.direction-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+.direction-tab{border:1px solid var(--line);background:#fffdf8;border-radius:12px;padding:9px 13px;color:var(--ink);font-weight:650;box-shadow:0 2px 5px rgba(67,56,39,.03)}
+.direction-tab.active{box-shadow:inset 0 -3px 0 var(--direction),0 2px 5px rgba(67,56,39,.03)}
+.direction-panel{background:rgba(255,253,248,.8);border:1px solid var(--line);border-radius:17px;padding:17px;border-top:4px solid var(--direction)}
+.direction-panel-head{display:flex;justify-content:space-between;gap:12px;margin-bottom:13px}
+.direction-panel-head h2{margin:0 0 4px;font-size:1.15rem}
+.direction-panel-head p{margin:0;color:var(--muted);font-size:.9rem}
+.direction-task-form{display:flex;gap:8px;margin:0 0 14px}
+.direction-task-form input{flex:1}
+.direction-task-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.direction-task{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--white);border:1px solid #ece5d9;border-radius:11px;padding:10px 11px}
+.direction-task.done .task-title{text-decoration:line-through;color:#8b897f}
+.task-check{display:flex;align-items:flex-start;gap:8px;min-width:0;cursor:pointer}
+.task-check input{width:auto;accent-color:#78927b;margin-top:3px}
+.task-title{overflow-wrap:anywhere}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:15px;background:var(--white)}
+.signal-table{width:100%;border-collapse:collapse;min-width:640px}
+.signal-table th,.signal-table td{text-align:left;padding:11px 13px;border-bottom:1px solid #f0ebe2;vertical-align:top}
+.signal-table th{font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);background:#f8f4ec}
+.signal-table tbody tr:last-child td{border-bottom:0}
+.signal-table td{font-size:.9rem;overflow-wrap:anywhere}
+.signal-pill{display:inline-flex;align-items:center;gap:0}
+.table-empty{text-align:center!important;color:var(--muted);padding:24px!important}
+.muted{color:var(--muted)}
+footer{max-width:1500px;margin:0 auto;padding:0 28px 28px;color:#89877e;font-size:.82rem}
+dialog{border:0;border-radius:18px;padding:0;width:min(620px,calc(100% - 28px));max-height:90vh;box-shadow:0 20px 70px rgba(35,32,25,.25);background:var(--paper)}
+dialog::backdrop{background:rgba(43,42,36,.38);backdrop-filter:blur(2px)}
+.modal-head{padding:20px 22px 10px;display:flex;justify-content:space-between;align-items:center}
+.modal-head h2{margin:0;font-size:1.25rem}
+.modal-body{padding:8px 22px 20px;overflow:auto;max-height:calc(90vh - 70px)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field.full{grid-column:1/-1}
+.field label{font-size:.88rem;color:#65665e;font-weight:600}
+.field small{font-size:.77rem;color:#8b897f}
+.modal-actions{display:flex;justify-content:space-between;gap:8px;margin-top:18px;align-items:center}
+.modal-actions-right{display:flex;gap:8px}
+.danger{color:#9a6b62;border-color:#e5d2cb}
+.notice{font-size:.84rem;color:#817d72;margin:12px 0 0}
+.import-options{display:grid;gap:10px;margin:14px 0}
+.import-choice{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fffdf8}
+.import-choice input{width:auto;margin-top:5px}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#454b43;color:white;padding:10px 16px;border-radius:12px;box-shadow:var(--shadow);z-index:20;max-width:calc(100% - 24px);font-size:.9rem}
+.hidden{display:none!important}
+@media(max-width:1050px){.board{grid-template-columns:repeat(2,minmax(0,1fr))}.top-panels{grid-template-columns:1fr}}
+@media(max-width:600px){
+ .topbar{padding:22px 16px 8px;display:block}.actions{justify-content:flex-start;margin-top:14px}
+ main{padding:10px 14px 30px}footer{padding:0 14px 24px}
+ .board{grid-template-columns:1fr;gap:10px}
+ .column{min-height:170px}
+ .column-head{padding-bottom:9px}
+ .goal-card{padding:12px 12px 10px 15px}
+ .form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}
+ .modal-head{padding:17px 17px 8px}.modal-body{padding:8px 17px 17px}
+ .modal-actions{align-items:stretch;flex-direction:column-reverse}.modal-actions-right{justify-content:flex-end}
+ .week-controls{align-items:stretch}.week-controls input[type=date]{max-width:none;width:100%}.week-controls select{width:100%}
+ .week-controls label{width:100%}
+ .view-tabs{width:100%}
+ .direction-task-form{flex-direction:column}
+ .direction-task{align-items:flex-start}
+ .signal-table{min-width:560px}
+}
+@media print{
+ @page{size:A4 landscape;margin:8mm}
+ html,body{background:#fff!important;color:#171717!important;font-size:8pt!important;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+ .topbar{display:none!important}
+ .topbar .subtitle,.topbar .actions,main .view-tabs,main .top-panels,main .filterbar,main .first-empty,
+ .column-add,.card-actions,.step-check,footer,.view-panel:not([data-view-panel="board"]){display:none!important}
+ main{padding:0;max-width:none;width:100%}
+ #printHeader{display:flex!important;justify-content:space-between;align-items:flex-end;gap:10px;margin:0 0 3mm;padding:0 0 2mm;border-bottom:1px solid #777;font-size:9pt}
+ #printHeader strong{font-size:12pt}
+ .board,.board.hidden{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:3mm!important;align-items:start;width:100%;}
+ .column{background:#fff!important;border:1px solid #aaa!important;border-radius:4px!important;padding:2mm!important;min-height:0!important;min-width:0!important;break-inside:avoid;}
+ .column-head{padding:0 0 2mm!important}.column-head h2{font-size:8pt!important;line-height:1.15}.column-head p{display:none!important}
+ .count{font-size:7pt!important}
+ .cards{gap:1.5mm!important;min-height:0!important}
+ .goal-card{background:#fff!important;box-shadow:none!important;border:1px solid #ccc!important;border-radius:3px!important;padding:1.5mm 1.5mm 1.5mm 2.5mm!important;break-inside:avoid;cursor:default;overflow-wrap:anywhere}
+ .goal-card:before{width:1mm!important}
+ .card-top{display:block!important}
+ .card-title{font-size:7.5pt!important;line-height:1.15!important;margin:0 0 1mm!important}
+ .card-detail{font-size:6.5pt!important;line-height:1.2!important;color:#333!important;margin:1mm 0 0!important}
+ .tag{display:inline-block!important;font-size:6pt!important;padding:.3mm 1mm!important;border:1px solid #bbb!important;background:#fff!important;color:#333!important;white-space:normal!important}
+ .empty{padding:2mm!important;font-size:7pt!important}
+ .goal-card,.column,.cards{break-inside:avoid-page}
+}
+
+@media(max-width:760px){
+ .project-create{grid-template-columns:1fr}
+ .project-card-head{display:block}
+ .project-actions{justify-content:flex-start;margin-top:9px}
+ .project-task-row{align-items:flex-start;flex-direction:column}
+ .project-task-actions{width:100%;justify-content:flex-start}
+ .report-filters{grid-template-columns:1fr 1fr}
+ .report-filters .report-filter:nth-child(3){grid-column:1/-1}
+ .report-filters #downloadCompletedCsvBtn{grid-column:1/-1;min-height:42px}
+}
+@media(max-width:520px){
+ .project-task-form{flex-direction:column}
+ .project-task-form .btn{min-height:40px}
+ .report-filters{grid-template-columns:1fr}
+ .report-filters .report-filter:nth-child(3),.report-filters #downloadCompletedCsvBtn{grid-column:auto}
+}
+
+
+/* Дополнительная адаптация для iPhone и сенсорного управления */
+:root{--control-bg:#fffefa;--column-bg:#f4f0e8;--panel-bg:rgba(255,253,248,.86);--card-border:#ece5d9;--soft-line:#f0ebe2;--table-head:#f8f4ec;--input-border:#ded7ca}
+input,select,textarea{background:var(--control-bg);border-color:var(--input-border)}
+.panel{background:var(--panel-bg)}
+.column{background:var(--column-bg)}
+.goal-card,.direction-task{border-color:var(--card-border)}
+.direction-tab,.import-choice{background:var(--white)}
+.signal-table th{background:var(--table-head)}
+.card-actions{border-color:var(--soft-line)}
+.icon-btn{background:var(--control-bg)}
+.print-header{display:none}
+
+body[data-theme="dark"]{
+ color-scheme:dark;
+ --paper:#171b19;--paper-deep:#202622;--ink:#e8ece7;--muted:#aab3aa;
+ --line:#39433c;--white:#252d28;--shadow:0 6px 20px rgba(0,0,0,.28);
+ --career:#9aafd1;--health:#9cbd9f;--study:#d1ad88;--home:#c09ab6;
+ --green:#80b98a;--yellow:#d8b66c;--red:#ce8b83;
+ --control-bg:#202722;--column-bg:#202722;--panel-bg:rgba(37,45,40,.92);
+ --card-border:#3b463e;--soft-line:#39433c;--table-head:#202722;--input-border:#48554b;
+ background:var(--paper);color:var(--ink)
+}
+body[data-theme="dark"] .btn,
+body[data-theme="dark"] .view-tabs,
+body[data-theme="dark"] .view-tab.active,
+body[data-theme="dark"] .direction-tab,
+body[data-theme="dark"] .direction-panel,
+body[data-theme="dark"] .direction-task,
+body[data-theme="dark"] .goal-card,
+body[data-theme="dark"] .table-wrap,
+body[data-theme="dark"] .import-choice,
+body[data-theme="dark"] dialog{background:var(--white);color:var(--ink);border-color:var(--line)}
+body[data-theme="dark"] .btn:hover,
+body[data-theme="dark"] .icon-btn:hover,
+body[data-theme="dark"] .view-tab:hover{background:#303a33;color:var(--ink)}
+body[data-theme="dark"] .btn.primary{background:#59745f;border-color:#59745f;color:#fff}
+body[data-theme="dark"] .btn.primary:hover{background:#66866d}
+body[data-theme="dark"] .icon-btn{background:#202722;color:#d7dfd8;border-color:#465247}
+body[data-theme="dark"] .column{border-color:#344037}
+body[data-theme="dark"] .column.drag-over{background:#29342c;border-color:#697c6b}
+body[data-theme="dark"] .column-add{color:#bdc8bd;border-color:#536154}
+body[data-theme="dark"] .empty{border-color:#536154;color:#aab3aa}
+body[data-theme="dark"] .tag{color:#242a25;background:color-mix(in srgb,var(--direction) 70%,#fff)}
+body[data-theme="dark"] .card-detail{color:#c0c9c1}
+body[data-theme="dark"] .card-detail b{color:#e0e7e0}
+body[data-theme="dark"] .signal-table th,
+body[data-theme="dark"] .signal-table td{border-color:#39433c}
+body[data-theme="dark"] .signal-table th{color:#b7c0b8}
+body[data-theme="dark"] .first-empty{background:#202722;border-color:#536154}
+body[data-theme="dark"] .toast{background:#dbe6dc;color:#202722}
+body[data-theme="dark"] dialog::backdrop{background:rgba(0,0,0,.62)}
+body[data-theme="dark"] .step-check{color:#b5d2b8}
+body[data-theme="dark"] .direction-task.done .task-title{color:#aab3aa}
+body[data-theme="dark"] .signal-dot.signal-none{background:#59645b}
+body[data-theme="dark"] .notice,body[data-theme="dark"] .signal-hint{color:#aab3aa}
+
+@media(max-width:600px){
+ body{font-size:15px;-webkit-text-size-adjust:100%}
+ .topbar{padding-top:calc(18px + env(safe-area-inset-top));padding-left:16px;padding-right:16px}
+ main{padding-left:12px;padding-right:12px;padding-bottom:calc(28px + env(safe-area-inset-bottom))}
+ footer{padding-left:12px;padding-right:12px}
+ .actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+ .actions .btn{min-height:44px;padding:9px 7px;font-size:.9rem}
+ #newGoalBtn{grid-column:1/-1}
+ .view-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
+ .view-tab{min-height:42px;padding:8px 6px;font-size:.88rem}
+ .view-tab:last-child{grid-column:1/-1}
+ .board{grid-template-columns:minmax(0,1fr);gap:10px}
+ .column{min-width:0;padding:10px;border-radius:14px}
+ .goal-card{cursor:default;padding:12px 12px 10px 15px}
+ .card-actions .icon-btn,.project-actions .icon-btn,.project-task-actions .icon-btn{min-height:40px;padding:8px 10px}
+ .filterbar select,.week-controls input,.week-controls select,input,select,textarea{font-size:16px}
+ .week-controls input[type=date]{max-width:none}
+ .panel{padding:13px}
+ .report-filters{padding:12px}
+ .table-wrap{-webkit-overflow-scrolling:touch}
+ dialog{width:calc(100% - 18px);max-height:calc(100dvh - 24px);border-radius:16px}
+ .modal-body{max-height:calc(100dvh - 92px);padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+ .modal-actions-right .btn{min-height:44px}
+ .direction-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .direction-tab{min-height:44px}
+}
+@media(max-width:380px){
+ .topbar h1{font-size:1.45rem}
+ .actions .btn{font-size:.82rem}
+ .card-top{flex-wrap:wrap}
+ .tag{white-space:normal}
+}
+
+
+/* Единый вид проектов и их задач */
+.project-create{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) auto;gap:8px;margin:0 0 14px}
+.project-create .btn{min-height:42px}
+.project-list{display:grid;gap:12px}
+.project-card{background:var(--white);border:1px solid var(--line);border-radius:15px;padding:14px}
+.project-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
+.project-card-head h3{font-size:1rem;margin:0 0 4px;overflow-wrap:anywhere}
+.project-description,.project-task-meta{color:var(--muted);font-size:.84rem;margin:0}
+.project-actions,.project-task-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.project-task-form{display:flex;gap:8px;margin-bottom:12px}
+.project-task-form input{flex:1;min-width:0}
+.project-task-list{list-style:none;display:grid;gap:8px;margin:0;padding:0}
+.project-task-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;border:1px solid var(--line);border-radius:11px;background:var(--panel-bg)}
+.project-task-main{display:flex;align-items:flex-start;gap:9px;min-width:0;flex:1}
+.project-task-main>input{width:auto;margin-top:4px}
+.project-task-title{overflow-wrap:anywhere}
+.project-task-row.done .project-task-title{text-decoration:line-through;color:var(--muted)}
+.project-task-status{font-size:.78rem;color:var(--muted);padding:3px 7px;border:1px solid var(--line);border-radius:20px;white-space:nowrap}
+.project-task-status.on-board{color:#54745b;border-color:#98b29c}
+.legacy-tasks{margin-top:15px}
+.legacy-tasks h3{font-size:.94rem;margin:0 0 8px}
+.report-filters{display:grid;grid-template-columns:1fr 1fr 1.2fr auto;gap:10px;align-items:end;margin-bottom:12px}
+.report-filter{display:flex;flex-direction:column;gap:5px;min-width:0}
+.report-filter label{font-size:.84rem;color:var(--muted)}
+.report-count{color:var(--muted);font-size:.88rem}
+body[data-theme="dark"] .field label,
+body[data-theme="dark"] .field small,
+body[data-theme="dark"] .report-filter label{color:var(--muted)}
+body[data-theme="dark"] .danger{color:#e2a39b;border-color:#704b46}
+body[data-theme="dark"] .project-task-status.on-board{color:#b5d9ba;border-color:#54775a}
+body[data-theme="dark"] .reminders span:before{color:#d7b77e}
+body[data-theme="dark"] .project-task-row{background:#202722;border-color:#39433c}
+@media(max-width:760px){
+ .project-create{grid-template-columns:1fr}
+ .project-card-head{display:block}
+ .project-actions{justify-content:flex-start;margin-top:9px}
+ .project-task-row{align-items:flex-start;flex-direction:column}
+ .project-task-actions{width:100%;justify-content:flex-start}
+ .report-filters{grid-template-columns:1fr 1fr}
+ .report-filters .report-filter:nth-child(3),.report-filters #downloadCompletedCsvBtn{grid-column:1/-1}
+}
+@media(max-width:520px){
+ .project-task-form{flex-direction:column}
+ .project-task-form .btn{min-height:44px}
+ .report-filters{grid-template-columns:1fr}
+ .report-filters .report-filter:nth-child(3),.report-filters #downloadCompletedCsvBtn{grid-column:auto}
+ .project-card{padding:12px}
+ .project-task-actions .icon-btn{flex:1}
+}
+@media print{.project-card,.project-task-row{background:#fff!important;color:#111!important}}
+
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div>
+    <h1>Канбан целей на 6 месяцев</h1>
+    <p class="subtitle"><span data-motivation></span></p>
+  </div>
+  <div class="actions" aria-label="Действия с данными">
+    <button class="btn" id="exportBtn">Экспорт</button>
+    <button class="btn" id="importBtn">Импорт</button>
+    <button class="btn" id="printBtn">Версия для печати</button>
+    <button class="btn" id="themeToggleBtn" type="button" aria-pressed="false">🌙 Тёмная тема</button>
+    <button class="btn primary" id="newGoalBtn">＋ Новая цель</button>
+    <input class="hidden" id="importFile" type="file" accept=".json,application/json">
+  </div>
+</header>
+<main>
+  <div id="printHeader" class="print-header"><strong>Канбан целей на 6 месяцев</strong><span id="printWeekLabel"></span></div>
+  <nav class="view-tabs" aria-label="Разделы">
+    <button class="view-tab active" data-view-tab="board" aria-selected="true">Доска</button>
+    <button class="view-tab" data-view-tab="directions" aria-selected="false">Направления</button>
+    <button class="view-tab" data-view-tab="signals" aria-selected="false">Светофор по неделям</button>
+    <button class="view-tab" data-view-tab="reports" aria-selected="false">Выполненные задачи</button>
+  </nav>
+
+  <section class="view-panel" data-view-panel="board">
+    <section class="top-panels">
+      <div class="panel">
+        <h2>Небольшие напоминания</h2>
+        <div class="reminders"><span data-motivation></span><span data-motivation></span></div>
+      </div>
+      <div class="panel">
+        <h2>Еженедельный светофор</h2>
+        <div class="week-controls">
+          <label for="weekDate">Неделя от</label>
+          <input type="date" id="weekDate" aria-label="Дата начала недели">
+          <select id="weekSignal" aria-label="Оценка недели">
+            <option value="">Пока не оценивал</option>
+            <option value="green">● Зелёный — комфортно</option>
+            <option value="yellow">● Жёлтый — на пределе</option>
+            <option value="red">● Красный — снизить нагрузку</option>
+          </select>
+        </div>
+        <textarea id="weekNote" class="week-note" rows="2" placeholder="Короткая заметка: что помогло или что стоит учесть…" aria-label="Заметка за неделю"></textarea>
+        <p class="signal-hint">Красный — это команда пересмотреть нагрузку. <span data-motivation></span></p>
+      </div>
+    </section>
+    <p id="boardWeekHint" class="readonly-week hidden"></p>
+    <div class="filterbar">
+      <label for="directionFilter">Показать направление:</label>
+      <select id="directionFilter">
+        <option value="all">Все направления</option>
+        <option value="career">Карьера</option>
+        <option value="health">Здоровье</option>
+        <option value="study">Учёба</option>
+        <option value="home">Быт</option>
+      </select>
+      <span class="notice" id="activeHint" aria-live="polite"></span>
+    </div>
+    <section id="board" class="board" aria-label="Канбан-доска целей"></section>
+    <section id="firstEmpty" class="first-empty hidden">
+      <h2>Здесь пока чистый лист</h2>
+      <p>Необязательно сразу придумывать идеальный план. Добавь одну цель, которая сейчас кажется важной, или просто сохрани эту страницу на потом.</p>
+      <button class="btn primary" id="firstGoalBtn">Добавить первую цель</button>
+      <p class="notice">Подсказка: <span data-motivation></span></p>
+    </section>
+  </section>
+
+  <section class="view-panel hidden" data-view-panel="directions" aria-label="Направления деятельности">
+    <div class="section-head">
+      <div>
+        <h2>Направления деятельности</h2>
+        <p>Отдельная вкладка для каждого направления — здесь можно расписать задачи на пути. <span data-motivation></span></p>
+      </div>
+    </div>
+    <div id="directionTabs" class="direction-tabs" role="tablist" aria-label="Вкладки направлений"></div>
+    <div id="directionContent"></div>
+  </section>
+
+  <section class="view-panel hidden" data-view-panel="signals" aria-label="Светофор по неделям">
+    <div class="section-head">
+      <div>
+        <h2>Светофор по неделям</h2>
+        <p>Все недельные оценки и заметки в одном месте.</p>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="signal-table">
+        <thead>
+          <tr>
+            <th>Неделя с</th>
+            <th>Светофор</th>
+            <th>Заметка</th>
+            <th>Обновлено</th>
+          </tr>
+        </thead>
+        <tbody id="signalTableBody"></tbody>
+      </table>
+    </div>
+    <p class="notice">Светофор заполняется в верхней панели на вкладке «Доска». Красный — сигнал уменьшить нагрузку.</p>
+  </section>
+
+  <section class="view-panel hidden" data-view-panel="reports" aria-label="Выполненные задачи">
+    <div class="section-head">
+      <div>
+        <h2>Выполненные задачи</h2>
+        <p>Отчёт по дате выполнения, проекту и направлению. Выгружается в CSV, который открывается в Excel. <span data-motivation></span></p>
+      </div>
+    </div>
+    <div class="report-filters panel">
+      <div class="report-filter"><label for="reportFrom">Выполнено с</label><input type="date" id="reportFrom"></div>
+      <div class="report-filter"><label for="reportTo">по</label><input type="date" id="reportTo"></div>
+      <div class="report-filter"><label for="reportDirection">Направление</label>
+        <select id="reportDirection">
+          <option value="all">Все направления</option>
+          <option value="career">Карьера</option><option value="health">Здоровье</option>
+          <option value="study">Учёба</option><option value="home">Быт</option>
+        </select>
+      </div>
+      <button class="btn primary" id="downloadCompletedCsvBtn">Скачать CSV</button>
+    </div>
+    <p class="report-count" id="reportCount" aria-live="polite"></p>
+    <div class="table-wrap">
+      <table class="signal-table report-table">
+        <thead><tr><th>Задача</th><th>Дата выполнения</th><th>Проект</th><th>Направление</th></tr></thead>
+        <tbody id="completedTasksBody"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<footer><span data-motivation></span> Данные сохраняются в этом браузере; для переноса на другое устройство используй «Экспорт» и «Импорт».</footer>
+
+<dialog id="goalDialog" aria-labelledby="goalDialogTitle">
+  <div class="modal-head"><h2 id="goalDialogTitle">Новая цель</h2><button class="icon-btn" id="closeGoal" aria-label="Закрыть окно">✕</button></div>
+  <div class="modal-body">
+    <form id="goalForm">
+      <div class="form-grid">
+        <div class="field full"><label for="goalTitle">Название цели *</label><input id="goalTitle" name="title" required maxlength="140" placeholder="Например, собрать портфолио"></div>
+        <div class="field"><label for="goalDirection">Направление *</label><select id="goalDirection" name="direction" required><option value="career">Карьера</option><option value="health">Здоровье</option><option value="study">Учёба</option><option value="home">Быт</option></select></div>
+        <div class="field"><label for="goalColumn">Колонка</label><select id="goalColumn" name="column"><option value="backlog">Хотелось бы начать</option><option value="doing">В работе</option><option value="done">Сделано / Отпраздновано</option><option value="pause">Пауза / Пересмотреть</option></select></div>
+        <div class="field full"><label for="goalProject">Проект</label><select id="goalProject" name="projectId"><option value="">Без проекта</option></select><small>Можно перенести сюда ранее созданную цель. Она появится в выбранном проекте как задача.</small></div>
+        <div class="field full"><label for="goalWhy">Зачем мне это</label><input id="goalWhy" name="why" maxlength="220" placeholder="Одна фраза о личном смысле"></div>
+        <div class="field full"><label for="goalMin">Минимальная версия</label><textarea id="goalMin" name="minVersion" maxlength="500" placeholder="Что будет считаться успехом в плохую неделю?"></textarea></div>
+        <div class="field full"><label for="goalMetric">Как пойму, что двигаюсь</label><input id="goalMetric" name="metric" maxlength="220" placeholder="Метрика усилий, а не только результата"></div>
+        <div class="field full"><label for="goalStep">Первый шаг на этой неделе</label><textarea id="goalStep" name="firstStep" maxlength="500" placeholder="Небольшое конкретное действие"></textarea></div>
+      </div>
+      <p class="notice">Не нужно заполнять всё сразу. Достаточно названия и направления.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn danger hidden" id="deleteGoalBtn">Удалить цель</button>
+        <div class="modal-actions-right"><button type="button" class="btn" id="cancelGoal">Отмена</button><button type="submit" class="btn primary">Сохранить</button></div>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<dialog id="importDialog" aria-labelledby="importTitle">
+  <div class="modal-head"><h2 id="importTitle">Импорт данных</h2><button class="icon-btn" id="closeImport" aria-label="Закрыть окно импорта">✕</button></div>
+  <div class="modal-body">
+    <p id="importSummary">Файл проверен. Выбери, как поступить с данными.</p>
+    <div class="import-options">
+      <label class="import-choice"><input type="radio" name="importMode" value="replace" checked><span><b>Заменить всё</b><br><small>Текущие карточки, задачи направлений и светофор будут заменены данными из файла.</small></span></label>
+      <label class="import-choice"><input type="radio" name="importMode" value="merge"><span><b>Добавить к текущему</b><br><small>Карточки и задачи добавятся с новыми ID; записи светофора объединятся по неделям.</small></span></label>
+    </div>
+    <div class="modal-actions"><span></span><div class="modal-actions-right"><button class="btn" id="cancelImport">Отмена</button><button class="btn primary" id="confirmImport">Импортировать</button></div></div>
+  </div>
+</dialog>
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  // Версия схемы и ключ локального хранилища.
+  const STORAGE_KEY = 'kanbanGoals.v1';
+  const SCHEMA_VERSION = 2;
+  const DIRECTIONS = {
+    career: { label: 'Карьера', color: 'var(--career)' },
+    health: { label: 'Здоровье', color: 'var(--health)' },
+    study: { label: 'Учёба', color: 'var(--study)' },
+    home: { label: 'Быт', color: 'var(--home)' }
+  };
+  const COLUMNS = [
+    { id: 'backlog', title: 'Хотелось бы начать', subtitle: 'Идеи, к которым можно вернуться' },
+    { id: 'doing', title: 'В работе', subtitle: 'Активные цели' },
+    { id: 'done', title: 'Готово за неделю', subtitle: 'Задачи, завершённые в выбранную неделю' },
+    { id: 'pause', title: 'Пауза / Пересмотреть', subtitle: 'Это не провал, это управление портфелем целей' }
+  ];
+  const $ = (selector, root = document) => root.querySelector(selector);
+  const board = $('#board');
+  const goalDialog = $('#goalDialog');
+  const importDialog = $('#importDialog');
+  let state = loadState();
+  let editingId = null;
+  let pendingImport = null;
+  let toastTimer = null;
+  let currentDirection = 'career';
+  const THEME_KEY = 'kanbanGoals.theme.v1';
+  const MOTIVATIONAL_POOL = [
+    'Большое дело тоже состоит из маленьких шагов.',
+    'Не обязательно быстро. Важно — в нужную сторону.',
+    'Сделанное лучше идеального, которое так и осталось в голове.',
+    'Даже небольшой шаг — это уже движение.',
+    'План нужен, чтобы помогать, а не командовать.',
+    'Пауза — часть маршрута, а не поломка системы.',
+    'Сначала устойчивый темп, потом рекорды.',
+    'Одна завершённая задача лучше десяти тревожных мыслей.',
+    'Не тащи всё сразу. Выбери следующий понятный шаг.',
+    'Прогресс иногда выглядит как пересмотр плана.',
+    'Если сегодня получилось немного — значит, получилось.',
+    'Хорошая система оставляет место для жизни.',
+    'Сравнивай себя с собой вчерашним, а не с чужим графиком.',
+    'Важные вещи растут от регулярности, а не от рывков.',
+    'Можно изменить маршрут, не отказываясь от цели.',
+    'Не каждая неделя обязана быть продуктивной. Она должна быть твоей.',
+    'Сложное становится понятнее, когда разбито на шаги.',
+    'Отмечай завершённое. Это тоже часть работы.',
+    'Сделай посильное сегодня — остальное дождётся своего часа.',
+    'Ты управляешь планом. План не управляет тобой.'
+  ];
+
+  function applyMotivationalPhrases() {
+    const phrases = [...MOTIVATIONAL_POOL];
+    for (let i = phrases.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [phrases[i], phrases[j]] = [phrases[j], phrases[i]];
+    }
+    document.querySelectorAll('[data-motivation]').forEach((node, index) => {
+      node.textContent = phrases[index % phrases.length];
+    });
+  }
+
+  function applyTheme(theme) {
+    const normalized = theme === 'dark' ? 'dark' : 'light';
+    document.body.dataset.theme = normalized;
+    const button = $('#themeToggleBtn');
+    if (button) {
+      button.textContent = normalized === 'dark' ? '☀️ Светлая тема' : '🌙 Тёмная тема';
+      button.setAttribute('aria-pressed', String(normalized === 'dark'));
+      button.setAttribute('aria-label', normalized === 'dark' ? 'Переключить на светлую тему' : 'Переключить на тёмную тему');
+    }
+    try { localStorage.setItem(THEME_KEY, normalized); } catch (error) { /* Тема останется до закрытия вкладки. */ }
+  }
+  function loadTheme() {
+    try { return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light'; }
+    catch (error) { return 'light'; }
+  }
+
+  function uid() {
+    if (globalThis.crypto && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+    return 'goal-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 11);
+  }
+  function nowISO() { return new Date().toISOString(); }
+  function localDateString(date = new Date()) {
+    const d = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return d.toISOString().slice(0, 10);
+  }
+  function mondayOf(dateString) {
+    const d = new Date(dateString + 'T12:00:00');
+    const day = (d.getDay() + 6) % 7;
+    d.setDate(d.getDate() - day);
+    return localDateString(d);
+  }
+  function emptyState() { return { cards: [], weekly: [], directionTasks: [], projects: [] }; }
+
+  function validCard(card) {
+    return card && typeof card === 'object' &&
+      typeof card.title === 'string' && card.title.trim().length > 0 &&
+      Object.prototype.hasOwnProperty.call(DIRECTIONS, card.direction) &&
+      COLUMNS.some(c => c.id === card.column) &&
+      ['why', 'minVersion', 'metric', 'firstStep'].every(k => card[k] === undefined || typeof card[k] === 'string') &&
+      typeof card.id === 'string' && card.id.length > 0;
+  }
+  function normalizeCard(card) {
+    const stamp = nowISO();
+    const createdAt = card.createdAt || stamp;
+    const updatedAt = card.updatedAt || createdAt;
+    const validHistory = Array.isArray(card.statusHistory)
+      ? card.statusHistory.filter(item => item && COLUMNS.some(col => col.id === item.column) && typeof item.at === 'string')
+          .map(item => ({ column: item.column, at: item.at })).sort((a,b) => a.at.localeCompare(b.at))
+      : [];
+    const statusHistory = validHistory.length ? validHistory : [{
+      column: card.column,
+      at: card.column === 'done' ? updatedAt : createdAt
+    }];
+    return {
+      id: String(card.id || uid()), title: card.title.trim(), direction: card.direction,
+      why: card.why || '', minVersion: card.minVersion || '', metric: card.metric || '',
+      firstStep: card.firstStep || '', column: card.column,
+      createdAt, updatedAt,
+      firstStepDone: Boolean(card.firstStepDone),
+      statusHistory,
+      completedAt: card.completedAt || (card.column === 'done' ? updatedAt : ''),
+      projectId: typeof card.projectId === 'string' ? card.projectId : '',
+      projectName: typeof card.projectName === 'string' ? card.projectName : '',
+      projectTaskId: typeof card.projectTaskId === 'string' ? card.projectTaskId : ''
+    };
+  }
+  function validWeekly(entry) {
+    return entry && typeof entry === 'object' &&
+      typeof entry.week === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(entry.week) &&
+      ['', 'green', 'yellow', 'red'].includes(entry.signal || '') &&
+      (entry.note === undefined || typeof entry.note === 'string');
+  }
+  function normalizeWeekly(entry) {
+    return { week: entry.week, signal: entry.signal || '', note: entry.note || '', updatedAt: entry.updatedAt || nowISO() };
+  }
+  function validDirectionTask(task) {
+    return task && typeof task === 'object' &&
+      typeof task.id === 'string' && task.id.length > 0 &&
+      typeof task.title === 'string' && task.title.trim().length > 0 &&
+      Object.prototype.hasOwnProperty.call(DIRECTIONS, task.direction) &&
+      (task.done === undefined || typeof task.done === 'boolean');
+  }
+  function normalizeDirectionTask(task) {
+    const stamp = nowISO();
+    return {
+      id: String(task.id || uid()),
+      direction: task.direction,
+      title: task.title.trim(),
+      done: Boolean(task.done),
+      completedAt: task.completedAt || (task.done ? (task.updatedAt || stamp) : ''),
+      createdAt: task.createdAt || stamp,
+      updatedAt: task.updatedAt || stamp
+    };
+  }
+  function validProjectTask(task) {
+    return task && typeof task === 'object' && typeof task.id === 'string' && task.id.length > 0 &&
+      typeof task.title === 'string' && task.title.trim().length > 0 &&
+      (task.done === undefined || typeof task.done === 'boolean') &&
+      (task.boardCardId === undefined || typeof task.boardCardId === 'string');
+  }
+  function normalizeProjectTask(task) {
+    const stamp = nowISO();
+    return {
+      id: String(task.id || uid()), title: task.title.trim(),
+      done: Boolean(task.done), completedAt: task.completedAt || '',
+      boardCardId: task.boardCardId || '',
+      createdAt: task.createdAt || stamp, updatedAt: task.updatedAt || stamp
+    };
+  }
+  function validProject(project) {
+    return project && typeof project === 'object' && typeof project.id === 'string' && project.id.length > 0 &&
+      typeof project.name === 'string' && project.name.trim().length > 0 &&
+      Object.prototype.hasOwnProperty.call(DIRECTIONS, project.direction) &&
+      (project.description === undefined || typeof project.description === 'string') &&
+      Array.isArray(project.tasks) && project.tasks.every(validProjectTask);
+  }
+  function normalizeProject(project) {
+    const stamp = nowISO();
+    return {
+      id: String(project.id || uid()), name: project.name.trim(), direction: project.direction,
+      description: project.description || '',
+      tasks: Array.isArray(project.tasks) ? project.tasks.map(normalizeProjectTask) : [],
+      createdAt: project.createdAt || stamp, updatedAt: project.updatedAt || stamp
+    };
+  }
+
+  function validateImport(data) {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('Корневой элемент должен быть JSON-объектом.');
+    if (![1, SCHEMA_VERSION].includes(data.schemaVersion)) throw new Error('Неподдерживаемая версия схемы. Поддерживаются версии 1 и 2.');
+    if (!Array.isArray(data.cards) || !Array.isArray(data.weekly)) throw new Error('В файле должны быть массивы cards и weekly.');
+    if (data.directionTasks !== undefined && !Array.isArray(data.directionTasks)) throw new Error('Поле directionTasks должно быть массивом.');
+    if (data.projects !== undefined && !Array.isArray(data.projects)) throw new Error('Поле projects должно быть массивом.');
+    if (!data.cards.every(validCard)) throw new Error('Одна или несколько карточек имеют неверную структуру или обязательные поля.');
+    if (!data.weekly.every(validWeekly)) throw new Error('Одна или несколько записей светофора имеют неверную структуру.');
+    if (Array.isArray(data.directionTasks) && !data.directionTasks.every(validDirectionTask)) throw new Error('Одна или несколько задач направления имеют неверную структуру.');
+    if (Array.isArray(data.projects) && !data.projects.every(validProject)) throw new Error('Один или несколько проектов имеют неверную структуру.');
+    return {
+      cards: data.cards.map(normalizeCard),
+      weekly: data.weekly.map(normalizeWeekly),
+      directionTasks: Array.isArray(data.directionTasks) ? data.directionTasks.map(normalizeDirectionTask) : [],
+      projects: Array.isArray(data.projects) ? data.projects.map(normalizeProject) : []
+    };
+  }
+  // Временное локальное хранение: данные находятся в localStorage этого браузера.
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return emptyState();
+      const data = JSON.parse(raw);
+      if (!data || typeof data !== 'object' || !Array.isArray(data.cards) || !Array.isArray(data.weekly)) {
+        return emptyState();
+      }
+      return {
+        cards: data.cards.filter(validCard).map(normalizeCard),
+        weekly: data.weekly.filter(validWeekly).map(normalizeWeekly),
+        directionTasks: Array.isArray(data.directionTasks)
+          ? data.directionTasks.filter(validDirectionTask).map(normalizeDirectionTask) : [],
+        projects: Array.isArray(data.projects)
+          ? data.projects.filter(validProject).map(normalizeProject) : []
+      };
+    } catch (error) {
+      console.warn('Не удалось прочитать локальные данные:', error);
+      return emptyState();
+    }
+  }
+
+  function saveState() {
+    try {
+      const payload = {
+        schemaVersion: SCHEMA_VERSION,
+        updatedAt: nowISO(),
+        cards: state.cards,
+        weekly: state.weekly,
+        directionTasks: state.directionTasks,
+        projects: state.projects
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch (error) {
+      console.error('Ошибка локального сохранения:', error);
+      showToast('Не удалось сохранить данные в браузере. Сделай экспорт и проверь свободное место.');
+    }
+  }
+
+  function escapeHTML(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  }
+  function showToast(message) {
+    const toast = $('#toast');
+    toast.textContent = message;
+    toast.classList.remove('hidden');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.add('hidden'), 3200);
+  }
+  function formatDate(dateString) {
+    const d = new Date(dateString + 'T12:00:00');
+    return d.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+  function formatDateTime(isoString) {
+    const d = new Date(isoString);
+    if (Number.isNaN(d.getTime())) return '—';
+    return d.toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' });
+  }
+
+  // Статус карточки на конец выбранной недели восстанавливается по истории переходов.
+  function weekRange(week) {
+    const start = new Date(week + 'T00:00:00');
+    const end = new Date(start);
+    end.setDate(end.getDate() + 7);
+    end.setMilliseconds(-1);
+    return { start, end };
+  }
+  function statusAt(card, timestamp) {
+    const history = (Array.isArray(card.statusHistory) && card.statusHistory.length)
+      ? [...card.statusHistory].sort((a,b) => a.at.localeCompare(b.at))
+      : [{ column: card.column, at: card.updatedAt || card.createdAt }];
+    let result = null;
+    for (const event of history) {
+      const at = new Date(event.at).getTime();
+      if (!Number.isNaN(at) && at <= timestamp) result = event;
+    }
+    return result;
+  }
+  function selectedWeek() { return mondayOf($('#weekDate').value || currentWeek()); }
+  function isCurrentWeekSelected() { return selectedWeek() === currentWeek(); }
+
+  // Отрисовка доски. В «Готово» попадают только задачи, завершённые в выбранную неделю.
+  function render() {
+    const filter = $('#directionFilter').value;
+    const week = selectedWeek();
+    const { start, end } = weekRange(week);
+    const visibleCards = state.cards.map(card => {
+      const created = new Date(card.createdAt || 0).getTime();
+      if (Number.isNaN(created) || created > end.getTime()) return null;
+      const event = statusAt(card, end.getTime());
+      if (!event || !COLUMNS.some(col => col.id === event.column)) return null;
+      const eventTime = new Date(event.at).getTime();
+      if (event.column === 'done' && (eventTime < start.getTime() || eventTime > end.getTime())) return null;
+      return { ...card, column: event.column, reportCompletedAt: event.column === 'done' ? event.at : '' };
+    }).filter(card => card && (filter === 'all' || card.direction === filter));
+
+    const isCurrent = isCurrentWeekSelected();
+    $('#firstEmpty').classList.toggle('hidden', visibleCards.length !== 0);
+    board.classList.toggle('hidden', visibleCards.length === 0);
+    if (!isCurrent) {
+      $('#firstEmpty h2').textContent = 'За эту неделю задач нет';
+      $('#firstEmpty p').textContent = 'В выбранной неделе нет задач, которые оставались незавершёнными на её конец или были завершены в этот период.';
+      $('#firstGoalBtn').classList.add('hidden');
+      const tip = $('#firstEmpty .notice'); if (tip) tip.classList.add('hidden');
+    } else {
+      $('#firstEmpty h2').textContent = 'Здесь пока чистый лист';
+      $('#firstEmpty p').textContent = 'Необязательно сразу придумывать идеальный план. Добавь одну цель, которая сейчас кажется важной, или просто сохрани эту страницу на потом.';
+      $('#firstGoalBtn').classList.remove('hidden');
+      const tip = $('#firstEmpty .notice'); if (tip) tip.classList.remove('hidden');
+    }
+    const activeCount = visibleCards.filter(c => c.column === 'doing').length;
+    $('#activeHint').textContent = activeCount > 3 ? `В работе ${activeCount} цели. Возможно, часть можно перенести на паузу — без спешки.` : '';
+    const hint = $('#boardWeekHint');
+    if (hint) {
+      hint.classList.toggle('hidden', isCurrent);
+      hint.textContent = `Просмотр архива: ${formatDate(week)}. Для изменений выбери текущую неделю (${formatDate(currentWeek())}).`;
+    }
+    board.innerHTML = COLUMNS.map(column => {
+      const cards = visibleCards.filter(card => card.column === column.id);
+      return `<section class="column" data-column="${column.id}" aria-label="${escapeHTML(column.title)}">
+        <div class="column-head"><h2>${escapeHTML(column.title)} <span class="count">${cards.length}</span></h2><p>${escapeHTML(column.subtitle)}</p></div>
+        <div class="cards" data-dropzone="${column.id}">
+          ${cards.length ? cards.map(card => renderCard(card, isCurrent)).join('') : `<div class="empty">${column.id === 'done' ? 'На этой неделе пока ничего не завершено' : 'Пока здесь пусто'}</div>`}
+        </div>
+        ${isCurrent ? `<button class="column-add" data-add-column="${column.id}">＋ Добавить цель</button>` : ''}
+      </section>`;
+    }).join('');
+    bindBoardEvents();
+  }
+  function renderCard(card, editable = true) {
+    const dir = DIRECTIONS[card.direction];
+    const colIndex = COLUMNS.findIndex(c => c.id === card.column);
+    return `<article class="goal-card" ${editable ? 'draggable="true"' : ''} data-id="${escapeHTML(card.id)}" style="--direction:${dir.color}" tabindex="0" aria-label="${escapeHTML(card.title)}">
+      <div class="card-top"><div><h3 class="card-title">${escapeHTML(card.title)}</h3></div><span class="tag">${dir.label}</span></div>
+      ${card.projectName ? `<p class="card-detail"><b>Проект:</b> ${escapeHTML(card.projectName)}</p>` : ''}
+      ${card.why ? `<p class="card-detail"><b>Зачем:</b> ${escapeHTML(card.why)}</p>` : ''}
+      ${card.minVersion ? `<p class="card-detail"><b>Минимум:</b> ${escapeHTML(card.minVersion)}</p>` : ''}
+      ${card.metric ? `<p class="card-detail"><b>Движение:</b> ${escapeHTML(card.metric)}</p>` : ''}
+      ${card.firstStep ? `<p class="card-detail"><b>Первый шаг:</b> ${escapeHTML(card.firstStep)}</p>` : ''}
+      ${card.column === 'done' && card.reportCompletedAt ? `<p class="card-detail"><b>Выполнено:</b> ${escapeHTML(formatDateTime(card.reportCompletedAt))}</p>` : ''}
+      ${editable && card.column === 'doing' ? `<label class="step-check"><input type="checkbox" data-step="${escapeHTML(card.id)}" ${card.firstStepDone ? 'checked' : ''}> Первый шаг выполнен</label>` : ''}
+      ${editable ? `<div class="card-actions">
+        <button class="icon-btn" data-move="-1" data-id="${escapeHTML(card.id)}" aria-label="Переместить в предыдущую колонку" title="Влево" ${colIndex === 0 ? 'disabled' : ''}>←</button>
+        <button class="icon-btn" data-move="1" data-id="${escapeHTML(card.id)}" aria-label="Переместить в следующую колонку" title="Вправо" ${colIndex === COLUMNS.length - 1 ? 'disabled' : ''}>→</button>
+        <span class="spacer"></span>
+        <button class="icon-btn" data-edit="${escapeHTML(card.id)}" aria-label="Редактировать цель">Изменить</button>
+      </div>` : ''}
+    </article>`;
+  }
+  function bindBoardEvents() {
+    if (!isCurrentWeekSelected()) return;
+    board.querySelectorAll('[data-add-column]').forEach(btn => btn.addEventListener('click', () => openGoal(null, btn.dataset.addColumn)));
+    board.querySelectorAll('[data-edit]').forEach(btn => btn.addEventListener('click', () => openGoal(btn.dataset.edit)));
+    board.querySelectorAll('[data-move]').forEach(btn => btn.addEventListener('click', () => moveCard(btn.dataset.id, Number(btn.dataset.move))));
+    board.querySelectorAll('[data-step]').forEach(input => input.addEventListener('change', () => {
+      const card = state.cards.find(c => c.id === input.dataset.step);
+      if (card) { card.firstStepDone = input.checked; card.updatedAt = nowISO(); saveState(); render(); }
+    }));
+    board.querySelectorAll('.goal-card').forEach(cardEl => {
+      cardEl.addEventListener('dragstart', event => {
+        event.dataTransfer.setData('text/plain', cardEl.dataset.id);
+        event.dataTransfer.effectAllowed = 'move';
+        cardEl.classList.add('dragging');
+      });
+      cardEl.addEventListener('dragend', () => cardEl.classList.remove('dragging'));
+      cardEl.addEventListener('dblclick', () => openGoal(cardEl.dataset.id));
+    });
+    board.querySelectorAll('.column').forEach(columnEl => {
+      columnEl.addEventListener('dragover', event => { event.preventDefault(); columnEl.classList.add('drag-over'); });
+      columnEl.addEventListener('dragleave', event => { if (!columnEl.contains(event.relatedTarget)) columnEl.classList.remove('drag-over'); });
+      columnEl.addEventListener('drop', event => {
+        event.preventDefault(); columnEl.classList.remove('drag-over');
+        moveToColumn(event.dataTransfer.getData('text/plain'), columnEl.dataset.column);
+      });
+    });
+  }
+  function syncProjectTaskFromCard(card, stamp) {
+    if (!card.projectTaskId) return;
+    for (const project of state.projects) {
+      const task = project.tasks.find(item => item.id === card.projectTaskId);
+      if (!task) continue;
+      task.done = card.column === 'done';
+      task.completedAt = task.done ? (card.completedAt || stamp) : '';
+      task.updatedAt = stamp;
+      return;
+    }
+  }
+  function moveToColumn(id, column) {
+    const card = state.cards.find(c => c.id === id);
+    if (!isCurrentWeekSelected() || !card || !COLUMNS.some(c => c.id === column) || card.column === column) return;
+    const stamp = nowISO();
+    card.column = column;
+    card.updatedAt = stamp;
+    card.completedAt = column === 'done' ? stamp : '';
+    if (!Array.isArray(card.statusHistory)) card.statusHistory = [];
+    card.statusHistory.push({ column, at: stamp });
+    syncProjectTaskFromCard(card, stamp);
+    saveState(); render(); renderDirections(); renderReport();
+  }
+  function moveCard(id, delta) {
+    const card = state.cards.find(c => c.id === id);
+    if (!card) return;
+    const index = COLUMNS.findIndex(c => c.id === card.column);
+    const next = COLUMNS[index + delta];
+    if (next) moveToColumn(id, next.id);
+  }
+
+  // Проекты сгруппированы по направлениям. Задачи проекта можно отправлять на доску.
+  function projectTaskCard(task) {
+    return state.cards.find(card => card.projectTaskId === task.id);
+  }
+  function renderDirections() {
+    const tabs = $('#directionTabs');
+    const content = $('#directionContent');
+    if (!tabs || !content) return;
+
+    tabs.innerHTML = Object.entries(DIRECTIONS).map(([id, dir]) => {
+      const projectCount = state.projects.filter(project => project.direction === id).length;
+      const legacyCount = state.directionTasks.filter(task => task.direction === id).length;
+      return `<button class="direction-tab ${id === currentDirection ? 'active' : ''}" data-direction-tab="${id}" role="tab" aria-selected="${id === currentDirection}" style="--direction:${dir.color}">${escapeHTML(dir.label)} <span class="count">${projectCount}${legacyCount ? ` + ${legacyCount}` : ''}</span></button>`;
+    }).join('');
+
+    const dir = DIRECTIONS[currentDirection];
+    const projects = state.projects.filter(project => project.direction === currentDirection);
+    const tasks = state.directionTasks.filter(task => task.direction === currentDirection);
+    const cardCount = state.cards.filter(card => card.direction === currentDirection).length;
+
+    content.innerHTML = `<section class="direction-panel" style="--direction:${dir.color}" aria-label="${escapeHTML(dir.label)}">
+      <div class="direction-panel-head"><div><h2>${escapeHTML(dir.label)}</h2>
+        <p>Проектов: ${projects.length}. Карточек на доске: ${cardCount}.</p></div></div>
+      <form class="project-create" id="projectCreateForm">
+        <input id="projectNameInput" maxlength="120" required placeholder="Название нового проекта" aria-label="Название проекта">
+        <input id="projectDescriptionInput" maxlength="240" placeholder="Краткое описание (необязательно)" aria-label="Описание проекта">
+        <button class="btn primary" type="submit">＋ Создать проект</button>
+      </form>
+      <div class="project-list">
+        ${projects.length ? projects.map(project => `
+          <article class="project-card" data-project-id="${escapeHTML(project.id)}">
+            <div class="project-card-head"><div><h3>${escapeHTML(project.name)} <span class="count">${project.tasks.length} задач</span></h3>
+              ${project.description ? `<p class="project-description">${escapeHTML(project.description)}</p>` : ''}</div>
+              <div class="project-actions"><button class="icon-btn" data-project-edit="${escapeHTML(project.id)}">Изменить проект</button>
+                <button class="icon-btn danger" data-project-delete="${escapeHTML(project.id)}">Удалить</button></div>
+            </div>
+            <form class="project-task-form" data-project-task-form="${escapeHTML(project.id)}">
+              <input name="title" maxlength="180" required placeholder="Добавить задачу в проект…" aria-label="Новая задача проекта">
+              <button class="btn" type="submit">＋ Добавить задачу</button>
+            </form>
+            ${project.tasks.length ? `<ul class="project-task-list">${project.tasks.map(task => {
+              const card = projectTaskCard(task);
+              const done = card ? card.column === 'done' : task.done;
+              const status = card ? (COLUMNS.find(col => col.id === card.column)?.title || 'На доске') : (task.done ? 'Выполнено' : 'В проекте');
+              return `<li class="project-task-row ${done ? 'done' : ''}">
+                <div class="project-task-main">
+                  <input type="checkbox" data-project-task-toggle="${escapeHTML(task.id)}" ${done ? 'checked' : ''} ${card ? 'disabled title="Статус связанной задачи меняется на доске"' : ''} aria-label="Задача выполнена">
+                  <div><div class="project-task-title">${escapeHTML(task.title)}</div>
+                    ${task.completedAt && done ? `<div class="project-task-meta">Выполнено: ${escapeHTML(formatDateTime(task.completedAt))}</div>` : ''}</div>
+                </div>
+                <div class="project-task-actions">
+                  <span class="project-task-status ${card ? 'on-board' : ''}">${escapeHTML(status)}</span>
+                  ${card ? `<button class="icon-btn" data-project-task-open="${escapeHTML(task.id)}">Открыть на доске</button>` : `<button class="icon-btn" data-project-task-board="${escapeHTML(task.id)}">На доску</button>`}
+                  <button class="icon-btn" data-project-task-edit="${escapeHTML(task.id)}">Изменить</button>
+                  <button class="icon-btn danger" data-project-task-delete="${escapeHTML(task.id)}">Удалить</button>
+                </div>
+              </li>`;
+            }).join('')}</ul>` : `<div class="empty">В проекте пока нет задач. Добавь первую задачу выше.</div>`}
+          </article>`).join('') : `<div class="empty">В этом направлении пока нет проектов. Создай проект и добавь в него задачи.</div>`}
+      </div>
+      ${tasks.length ? `<section class="legacy-tasks"><h3>Задачи направления без проекта</h3>
+        <ul class="direction-task-list">${tasks.map(task => `<li class="direction-task ${task.done ? 'done' : ''}">
+          <label class="task-check"><input type="checkbox" data-task-toggle="${escapeHTML(task.id)}" ${task.done ? 'checked' : ''}><span class="task-title">${escapeHTML(task.title)}</span></label>
+          <button class="icon-btn danger" type="button" data-task-delete="${escapeHTML(task.id)}">Удалить</button>
+        </li>`).join('')}</ul></section>` : ''}
+    </section>`;
+
+    tabs.querySelectorAll('[data-direction-tab]').forEach(btn => btn.addEventListener('click', () => {
+      currentDirection = btn.dataset.directionTab;
+      renderDirections();
+    }));
+
+    $('#projectCreateForm').addEventListener('submit', event => {
+      event.preventDefault();
+      const name = $('#projectNameInput').value.trim();
+      const description = $('#projectDescriptionInput').value.trim();
+      if (!name) return;
+      const stamp = nowISO();
+      state.projects.push({ id: uid(), name, description, direction: currentDirection, tasks: [], createdAt: stamp, updatedAt: stamp });
+      saveState(); renderDirections(); showToast('Проект создан.');
+    });
+
+    content.querySelectorAll('[data-project-task-form]').forEach(form => form.addEventListener('submit', event => {
+      event.preventDefault();
+      const project = state.projects.find(item => item.id === form.dataset.projectTaskForm);
+      const title = form.elements.title.value.trim();
+      if (!project || !title) return;
+      const stamp = nowISO();      project.tasks.push({ id: uid(), title, done: false, completedAt: '', boardCardId: '', createdAt: stamp, updatedAt: stamp });
+      project.updatedAt = stamp;
+      saveState(); renderDirections(); showToast('Задача добавлена в проект.');
+    }));
+
+    content.querySelectorAll('[data-project-edit]').forEach(btn => btn.addEventListener('click', () => {
+      const project = state.projects.find(item => item.id === btn.dataset.projectEdit);
+      if (!project) return;
+      const name = prompt('Название проекта:', project.name);
+      if (name === null) return;
+      if (!name.trim()) { alert('Название проекта не может быть пустым.'); return; }
+      const description = prompt('Описание проекта:', project.description || '');
+      project.name = name.trim();
+      if (description !== null) project.description = description.trim();
+      project.updatedAt = nowISO();
+      state.cards.filter(card => card.projectId === project.id).forEach(card => { card.projectName = project.name; });
+      saveState(); renderDirections(); render(); renderReport();
+    }));
+
+    content.querySelectorAll('[data-project-delete]').forEach(btn => btn.addEventListener('click', () => {
+      const project = state.projects.find(item => item.id === btn.dataset.projectDelete);
+      if (!project || !confirm(`Удалить проект «${project.name}»? Связанные карточки на доске останутся, но потеряют связь с проектом.`)) return;
+      state.cards.filter(card => card.projectId === project.id).forEach(card => {
+        card.projectName = project.name; card.projectId = ''; card.projectTaskId = '';
+      });
+      state.projects = state.projects.filter(item => item.id !== project.id);
+      saveState(); renderDirections(); render(); renderReport(); showToast('Проект удалён.');
+    }));
+
+    content.querySelectorAll('[data-project-task-board]').forEach(btn => btn.addEventListener('click', () => {
+      const project = state.projects.find(item => item.tasks.some(task => task.id === btn.dataset.projectTaskBoard));
+      const task = project?.tasks.find(item => item.id === btn.dataset.projectTaskBoard);
+      if (!project || !task) return;
+      if (task.boardCardId || projectTaskCard(task)) return;
+      if (!isCurrentWeekSelected()) { $('#weekDate').value = currentWeek(); renderWeek(); }
+      const stamp = nowISO();
+      const card = { id: uid(), title: task.title, direction: project.direction, why: '', minVersion: '', metric: '', firstStep: '', column: 'backlog',
+        createdAt: stamp, updatedAt: stamp, firstStepDone: false, completedAt: '', statusHistory: [{ column: 'backlog', at: stamp }],
+        projectId: project.id, projectName: project.name, projectTaskId: task.id };
+      state.cards.push(card);
+      task.boardCardId = card.id; task.done = false; task.completedAt = ''; task.updatedAt = stamp;
+      saveState(); renderDirections(); render(); showToast('Задача отправлена на доску.');
+    }));
+
+    content.querySelectorAll('[data-project-task-open]').forEach(btn => btn.addEventListener('click', () => {
+      const taskId = btn.dataset.projectTaskOpen;
+      const card = state.cards.find(item => item.projectTaskId === taskId);
+      if (!card) return;
+      const targetDate = card.completedAt || new Date().toISOString();
+      $('#weekDate').value = mondayOf(localDateString(new Date(targetDate)));
+      switchView('board'); renderWeek(); render();
+    }));
+
+    content.querySelectorAll('[data-project-task-edit]').forEach(btn => btn.addEventListener('click', () => {
+      for (const project of state.projects) {
+        const task = project.tasks.find(item => item.id === btn.dataset.projectTaskEdit);
+        if (!task) continue;
+        const title = prompt('Текст задачи:', task.title);
+        if (title === null) return;
+        if (!title.trim()) { alert('Текст задачи не может быть пустым.'); return; }
+        task.title = title.trim(); task.updatedAt = nowISO();
+        const card = projectTaskCard(task);
+        if (card) { card.title = task.title; card.updatedAt = nowISO(); }
+        saveState(); renderDirections(); render(); renderReport();
+        return;
+      }
+    }));
+
+    content.querySelectorAll('[data-project-task-toggle]').forEach(input => input.addEventListener('change', () => {
+      for (const project of state.projects) {
+        const task = project.tasks.find(item => item.id === input.dataset.projectTaskToggle);
+        if (!task) continue;
+        if (projectTaskCard(task)) return;
+        task.done = input.checked; task.completedAt = input.checked ? nowISO() : ''; task.updatedAt = nowISO();
+        saveState(); renderDirections(); renderReport();
+        return;
+      }
+    }));
+
+    content.querySelectorAll('[data-project-task-delete]').forEach(btn => btn.addEventListener('click', () => {
+      for (const project of state.projects) {
+        const task = project.tasks.find(item => item.id === btn.dataset.projectTaskDelete);
+        if (!task) continue;
+        if (!confirm(`Удалить задачу «${task.title}»? Связанная карточка на доске также будет удалена.`)) return;
+        const linkedCard = state.cards.find(card => card.projectTaskId === task.id || (task.boardCardId && card.id === task.boardCardId));
+        if (linkedCard) state.cards = state.cards.filter(card => card.id !== linkedCard.id);
+        project.tasks = project.tasks.filter(item => item.id !== task.id);
+        project.updatedAt = nowISO();
+        saveState(); renderDirections(); render(); renderReport();
+        return;
+      }
+    }));
+
+    content.querySelectorAll('[data-task-toggle]').forEach(input => input.addEventListener('change', () => {
+      const task = state.directionTasks.find(item => item.id === input.dataset.taskToggle);
+      if (!task) return;
+      task.done = input.checked; task.completedAt = input.checked ? nowISO() : ''; task.updatedAt = nowISO();
+      saveState(); renderDirections(); renderReport();
+    }));
+    content.querySelectorAll('[data-task-delete]').forEach(btn => btn.addEventListener('click', () => {
+      const task = state.directionTasks.find(item => item.id === btn.dataset.taskDelete);
+      if (!task || !confirm(`Удалить задачу «${task.title}»?`)) return;
+      state.directionTasks = state.directionTasks.filter(item => item.id !== task.id);
+      saveState(); renderDirections();
+    }));
+  }
+
+  // Таблица светофора по неделям.
+  function renderSignals() {
+    const tbody = $('#signalTableBody');
+    if (!tbody) return;
+    const entries = [...state.weekly].sort((a, b) => b.week.localeCompare(a.week));
+    if (!entries.length) {
+      tbody.innerHTML = `<tr><td colspan="4" class="table-empty">Пока нет недельных записей.</td></tr>`;
+      return;
+    }
+    const labels = {
+      green: 'Зелёный — комфортно',
+      yellow: 'Жёлтый — на пределе',
+      red: 'Красный — снизить нагрузку',
+      '': 'Пока не оценивал'
+    };
+    tbody.innerHTML = entries.map(entry => {
+      const signal = entry.signal || '';
+      return `<tr>
+        <td>${escapeHTML(formatDate(entry.week))}</td>
+        <td><span class="signal-badge signal-${signal || 'none'}"><span class="signal-dot signal-${signal || 'none'}"></span>${escapeHTML(labels[signal])}</span></td>
+        <td>${entry.note ? escapeHTML(entry.note) : '<span class="muted">—</span>'}</td>
+        <td>${entry.updatedAt ? escapeHTML(formatDateTime(entry.updatedAt)) : '—'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function completedReportRows() {
+    const rows = [];
+    const linkedCardIds = new Set();
+    for (const project of state.projects) {
+      for (const task of project.tasks) {
+        const card = state.cards.find(item => item.projectTaskId === task.id);
+        if (card) {
+          linkedCardIds.add(card.id);
+          if (card.column === 'done' && card.completedAt) rows.push({
+            title: task.title, completedAt: card.completedAt, project: project.name, direction: project.direction
+          });
+        } else if (task.done && task.completedAt) {
+          rows.push({ title: task.title, completedAt: task.completedAt, project: project.name, direction: project.direction });
+        }
+      }
+    }
+    for (const card of state.cards) {
+      if (linkedCardIds.has(card.id) || card.projectTaskId || card.column !== 'done' || !card.completedAt) continue;
+      rows.push({ title: card.title, completedAt: card.completedAt, project: card.projectName || '', direction: card.direction });
+    }
+    for (const task of state.directionTasks) {
+      if (task.done && task.completedAt) rows.push({ title: task.title, completedAt: task.completedAt, project: '', direction: task.direction });
+    }
+    return rows.sort((a,b) => b.completedAt.localeCompare(a.completedAt));
+  }
+  function filteredReportRows() {
+    const from = $('#reportFrom').value;
+    const to = $('#reportTo').value;
+    const direction = $('#reportDirection').value;
+    return completedReportRows().filter(row => {
+      const date = localDateString(new Date(row.completedAt));
+      return (!from || date >= from) && (!to || date <= to) && (direction === 'all' || row.direction === direction);
+    });
+  }
+  function renderReport() {
+    const tbody = $('#completedTasksBody');
+    if (!tbody) return;
+    const rows = filteredReportRows();
+    $('#reportCount').textContent = `Найдено выполненных задач: ${rows.length}`;
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="table-empty">За выбранный период выполненных задач нет.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(row => `<tr>
+      <td>${escapeHTML(row.title)}</td><td>${escapeHTML(formatDateTime(row.completedAt))}</td>
+      <td>${escapeHTML(row.project || '—')}</td><td>${escapeHTML(DIRECTIONS[row.direction]?.label || '—')}</td>
+    </tr>`).join('');
+  }
+  function csvCell(value) { return '"' + String(value ?? '').replace(/"/g, '""') + '"'; }
+  $('#downloadCompletedCsvBtn').addEventListener('click', () => {
+    const rows = filteredReportRows();
+    const header = ['Задача', 'Дата выполнения', 'Проект', 'Направление'];
+    const lines = [header, ...rows.map(row => [row.title, formatDateTime(row.completedAt), row.project || '', DIRECTIONS[row.direction]?.label || ''])]
+      .map(row => row.map(csvCell).join(';')).join('\r\n');
+    const blob = new Blob(['﻿' + lines], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url; link.download = `completed-tasks-${localDateString()}.csv`;
+    document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
+    showToast(`Подготовлен отчёт: ${rows.length} задач.`);
+  });
+  ['reportFrom','reportTo','reportDirection'].forEach(id => $('#' + id).addEventListener('change', renderReport));
+
+  // Переключение основных вкладок.
+  function switchView(view) {
+    document.querySelectorAll('[data-view-tab]').forEach(tab => {
+      const active = tab.dataset.viewTab === view;
+      tab.classList.toggle('active', active);
+      tab.setAttribute('aria-selected', String(active));
+    });
+    document.querySelectorAll('[data-view-panel]').forEach(panel => {
+      panel.classList.toggle('hidden', panel.dataset.viewPanel !== view);
+    });
+    if (view === 'directions') renderDirections();
+    if (view === 'signals') renderSignals();
+    if (view === 'reports') renderReport();
+  }
+
+  // Список проектов в форме цели. Проект выбирается только из того же направления.
+  function populateGoalProjects(direction, selectedId = '') {
+    const select = $('#goalProject');
+    if (!select) return;
+    const items = state.projects.filter(project => project.direction === direction);
+    select.innerHTML = '<option value="">Без проекта</option>' + items.map(project =>
+      `<option value="${escapeHTML(project.id)}">${escapeHTML(project.name)}</option>`
+    ).join('');
+    select.value = items.some(project => project.id === selectedId) ? selectedId : '';
+  }
+
+  // При назначении самостоятельной цели в проект она становится задачей проекта,
+  // связанной с той же карточкой на доске. Перенос в другой проект удаляет старую связь.
+  function assignCardToProject(card, projectId, stamp = nowISO()) {
+    let previousProject = null;
+    let previousTask = null;
+    if (card.projectTaskId) {
+      for (const project of state.projects) {
+        const task = project.tasks.find(item => item.id === card.projectTaskId);
+        if (task) { previousProject = project; previousTask = task; break; }
+      }
+    }
+
+    const target = state.projects.find(project => project.id === projectId && project.direction === card.direction);
+    if (!target) {
+      if (previousProject && previousTask) {
+        previousProject.tasks = previousProject.tasks.filter(task => task.id !== previousTask.id);
+        previousProject.updatedAt = stamp;
+      }
+      card.projectId = '';
+      card.projectName = '';
+      card.projectTaskId = '';
+      return;
+    }
+
+    let taskId;
+    if (previousTask && previousProject === target) {
+      taskId = previousTask.id;
+      previousTask.title = card.title;
+      previousTask.boardCardId = card.id;
+      previousTask.done = card.column === 'done';
+      previousTask.completedAt = previousTask.done ? (card.completedAt || stamp) : '';
+      previousTask.updatedAt = stamp;
+    } else {
+      if (previousProject && previousTask) {
+        previousProject.tasks = previousProject.tasks.filter(task => task.id !== previousTask.id);
+        previousProject.updatedAt = stamp;
+      }
+      taskId = uid();
+      target.tasks.push({
+        id: taskId, title: card.title, done: card.column === 'done',
+        completedAt: card.column === 'done' ? (card.completedAt || stamp) : '',
+        boardCardId: card.id, createdAt: stamp, updatedAt: stamp
+      });
+    }
+    target.updatedAt = stamp;
+    card.projectId = target.id;
+    card.projectName = target.name;
+    card.projectTaskId = taskId;
+  }
+
+  // Форма создания и редактирования.
+  function openGoal(id = null, defaultColumn = 'backlog') {
+    if (!isCurrentWeekSelected()) { showToast('Историческая неделя доступна только для просмотра.'); return; }
+    editingId = id;
+    const card = id ? state.cards.find(c => c.id === id) : null;
+    $('#goalDialogTitle').textContent = card ? 'Изменить цель' : 'Новая цель';
+    $('#goalTitle').value = card?.title || '';
+    $('#goalDirection').value = card?.direction || 'career';
+    populateGoalProjects($('#goalDirection').value, card?.projectId || '');
+    $('#goalColumn').value = card?.column || defaultColumn;
+    $('#goalWhy').value = card?.why || '';
+    $('#goalMin').value = card?.minVersion || '';
+    $('#goalMetric').value = card?.metric || '';
+    $('#goalStep').value = card?.firstStep || '';
+    $('#deleteGoalBtn').classList.toggle('hidden', !card);
+    goalDialog.showModal();
+    setTimeout(() => $('#goalTitle').focus(), 0);
+  }
+  function closeGoal() { goalDialog.close(); editingId = null; }
+  $('#goalDirection').addEventListener('change', () => populateGoalProjects($('#goalDirection').value, ''));
+  $('#goalForm').addEventListener('submit', event => {
+    event.preventDefault();
+    const title = $('#goalTitle').value.trim();
+    if (!title) { $('#goalTitle').focus(); return; }
+    const fields = {
+      title, direction: $('#goalDirection').value, column: $('#goalColumn').value,
+      why: $('#goalWhy').value.trim(), minVersion: $('#goalMin').value.trim(),
+      metric: $('#goalMetric').value.trim(), firstStep: $('#goalStep').value.trim(),
+      projectId: $('#goalProject').value
+    };
+    const existing = state.cards.find(c => c.id === editingId);
+    const stamp = nowISO();
+    if (existing) {
+      const columnChanged = existing.column !== fields.column;
+      Object.assign(existing, fields, { updatedAt: stamp });
+      if (columnChanged) {
+        if (!Array.isArray(existing.statusHistory)) existing.statusHistory = [];
+        existing.statusHistory.push({ column: fields.column, at: stamp });
+        existing.completedAt = fields.column === 'done' ? stamp : '';
+        syncProjectTaskFromCard(existing, stamp);
+      }
+      assignCardToProject(existing, fields.projectId, stamp);
+    } else {
+      const newCard = { ...fields, id: uid(), createdAt: stamp, updatedAt: stamp, firstStepDone: false,
+        completedAt: fields.column === 'done' ? stamp : '', statusHistory: [{ column: fields.column, at: stamp }],
+        projectId: '', projectName: '', projectTaskId: '' };
+      state.cards.push(newCard);
+      assignCardToProject(newCard, fields.projectId, stamp);
+    }
+    saveState(); closeGoal(); render(); renderDirections(); renderReport();
+  });
+  $('#deleteGoalBtn').addEventListener('click', () => {
+    const card = state.cards.find(c => c.id === editingId);
+    if (!card) return;
+    if (confirm(`Удалить цель «${card.title}»? Это действие нельзя отменить.`)) {
+      const linkedCard = card;
+      if (linkedCard.projectTaskId) {
+        for (const project of state.projects) {
+          const task = project.tasks.find(item => item.id === linkedCard.projectTaskId);
+          if (task) { task.boardCardId = ''; task.done = false; task.completedAt = ''; task.updatedAt = nowISO(); }
+        }
+      }
+      state.cards = state.cards.filter(c => c.id !== editingId);
+      saveState(); closeGoal(); render(); renderDirections(); renderReport(); showToast('Цель удалена.');
+    }
+  });
+  $('#closeGoal').addEventListener('click', closeGoal);
+  $('#cancelGoal').addEventListener('click', closeGoal);
+  goalDialog.addEventListener('click', event => { if (event.target === goalDialog) closeGoal(); });
+  goalDialog.addEventListener('cancel', () => { editingId = null; });
+
+  // Еженедельные заметки хранятся отдельно от карточек. Неделя нормализуется к понедельнику.
+  function currentWeek() { return mondayOf(localDateString()); }
+  function getWeek(week) { return state.weekly.find(w => w.week === week); }
+  function renderWeek() {
+    const week = mondayOf($('#weekDate').value || currentWeek());
+    const entry = getWeek(week);
+    $('#weekSignal').value = entry?.signal || '';
+    $('#weekSignal').dataset.signal = entry?.signal || 'none';
+    $('#weekNote').value = entry?.note || '';
+    updatePrintWeekLabel();
+    render();
+  }
+  function saveWeek() {
+    const week = mondayOf($('#weekDate').value || currentWeek());
+    let entry = getWeek(week);
+    if (!entry) { entry = { week, signal: '', note: '', updatedAt: nowISO() }; state.weekly.push(entry); }
+    entry.signal = $('#weekSignal').value;
+    $('#weekSignal').dataset.signal = entry.signal || 'none';
+    entry.note = $('#weekNote').value.trim();
+    entry.updatedAt = nowISO();
+    saveState();
+    renderSignals();
+  }
+  $('#weekDate').value = currentWeek();
+  $('#weekDate').addEventListener('change', () => { $('#weekDate').value = mondayOf($('#weekDate').value || currentWeek()); renderWeek(); render(); });
+  $('#weekSignal').addEventListener('change', saveWeek);
+  $('#weekNote').addEventListener('change', saveWeek);
+  $('#weekNote').addEventListener('blur', saveWeek);
+
+  // Экспорт: полный переносимый снимок данных.
+  $('#exportBtn').addEventListener('click', () => {
+    const payload = {
+      schemaVersion: SCHEMA_VERSION,
+      exportedAt: nowISO(),
+      cards: state.cards,
+      weekly: state.weekly,
+      directionTasks: state.directionTasks,
+      projects: state.projects
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url; link.download = `kanban-goals-${localDateString()}.json`;
+    document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
+    showToast('Файл экспорта подготовлен.');
+  });
+
+  // Импорт сначала полностью проверяется, только затем применяется.
+  $('#importBtn').addEventListener('click', () => $('#importFile').click());
+  $('#importFile').addEventListener('change', async event => {
+    const file = event.target.files[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text());
+      pendingImport = validateImport(parsed);
+      $('#importSummary').textContent = `Проверка пройдена: ${pendingImport.cards.length} карточек, ${pendingImport.projects.length} проектов, ${pendingImport.directionTasks.length} задач направлений и ${pendingImport.weekly.length} записей светофора.`;
+      importDialog.showModal();
+    } catch (error) {
+      pendingImport = null;
+      alert('Не удалось импортировать файл: ' + (error.message || 'неверный формат JSON') + '\nТекущие данные не изменены.');
+    }
+  });
+  function closeImport() { importDialog.close(); pendingImport = null; }
+  $('#closeImport').addEventListener('click', closeImport);
+  $('#cancelImport').addEventListener('click', closeImport);
+  importDialog.addEventListener('click', event => { if (event.target === importDialog) closeImport(); });
+  $('#confirmImport').addEventListener('click', () => {
+    if (!pendingImport) return;
+    const mode = $('input[name="importMode"]:checked').value;
+    if (mode === 'replace') {
+      state = {
+        cards: pendingImport.cards,
+        weekly: pendingImport.weekly,
+        directionTasks: pendingImport.directionTasks,
+        projects: pendingImport.projects
+      };
+    } else {
+      const cardIdMap = new Map();
+      const projectIdMap = new Map();
+      const taskIdMap = new Map();
+      pendingImport.cards.forEach(card => cardIdMap.set(card.id, uid()));
+      pendingImport.projects.forEach(project => {
+        projectIdMap.set(project.id, uid());
+        project.tasks.forEach(task => taskIdMap.set(task.id, uid()));
+      });
+      const projectAdditions = pendingImport.projects.map(project => ({
+        ...project, id: projectIdMap.get(project.id),
+        tasks: project.tasks.map(task => ({ ...task, id: taskIdMap.get(task.id),
+          boardCardId: task.boardCardId ? (cardIdMap.get(task.boardCardId) || '') : '' }))
+      }));
+      const cardAdditions = pendingImport.cards.map(card => ({
+        ...card, id: cardIdMap.get(card.id),
+        projectId: card.projectId ? (projectIdMap.get(card.projectId) || '') : '',
+        projectTaskId: card.projectTaskId ? (taskIdMap.get(card.projectTaskId) || '') : ''
+      }));
+      state.cards.push(...cardAdditions);
+      state.projects.push(...projectAdditions);
+      const weeks = new Map(state.weekly.map(w => [w.week, w]));
+      pendingImport.weekly.forEach(item => weeks.set(item.week, item));
+      state.weekly = [...weeks.values()];
+      state.directionTasks.push(...pendingImport.directionTasks.map(task => ({ ...task, id: uid(), createdAt: nowISO(), updatedAt: nowISO() })));
+    }
+    saveState(); closeImport(); render(); renderWeek(); renderDirections(); renderSignals(); renderReport();
+    showToast(mode === 'replace' ? 'Данные заменены.' : 'Данные добавлены.');
+  });
+  function updatePrintWeekLabel() {
+    const week = selectedWeek();
+    const { start } = weekRange(week);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    $('#printWeekLabel').textContent = `Отчётная неделя: ${formatDate(week)} — ${end.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+  }
+  $('#printBtn').addEventListener('click', () => {
+    switchView('board');
+    updatePrintWeekLabel();
+    render();
+    window.print();
+  });
+  $('#themeToggleBtn').addEventListener('click', () => {
+    applyTheme(document.body.dataset.theme === 'dark' ? 'light' : 'dark');
+  });
+  $('#newGoalBtn').addEventListener('click', () => openGoal());
+  $('#firstGoalBtn').addEventListener('click', () => openGoal());
+  $('#directionFilter').addEventListener('change', render);
+  $('#reportFrom').value = ''; $('#reportTo').value = ''; $('#reportDirection').value = 'all';
+  document.querySelectorAll('[data-view-tab]').forEach(tab => tab.addEventListener('click', () => switchView(tab.dataset.viewTab)));
+
+  applyTheme(loadTheme());
+  applyMotivationalPhrases();
+  updatePrintWeekLabel();
+  render();
+  renderWeek();
+  renderSignals();
+})();
+</script>
+</body>
+</html>
