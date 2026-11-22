@@ -450,6 +450,31 @@ body:not(.app-ready)>footer{display:none!important}
 .auth-error{padding:10px 12px;border:1px solid #c98d83;border-radius:10px;background:rgba(201,141,131,.12);color:#9b4f46!important;font-weight:650}
 body[data-theme="dark"] .auth-error{color:#f0aaa0!important}
 
+
+/* Пояснения к задачам, усиленная визуальная группировка проектов и управление порядком. */
+.comment-action{font-size:1rem;min-width:34px;padding:5px 7px}
+.task-comment{margin:5px 0 0;padding:7px 9px;border-left:3px solid #a9b89b;border-radius:0 8px 8px 0;background:rgba(145,170,145,.12);font-size:.82rem;line-height:1.4;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink)}
+.project-card{background:color-mix(in srgb,var(--project-color) 10%,var(--white));border:2px solid color-mix(in srgb,var(--project-color) 42%,var(--line));box-shadow:0 4px 13px rgba(52,62,48,.08)}
+.project-card-head{padding-bottom:9px;border-bottom:1px solid color-mix(in srgb,var(--project-color) 30%,var(--line))}
+.project-card-head h3{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.project-task-row{background:color-mix(in srgb,var(--project-color, var(--paper-deep)) 5%,var(--white));border-color:color-mix(in srgb,var(--project-color, var(--line)) 28%,var(--line))}
+.project-task-row[draggable="true"]{cursor:grab}
+.project-task-row.dragging{opacity:.45;border-style:dashed}
+.project-task-row.drop-target{outline:2px dashed var(--project-color);outline-offset:2px}
+.project-task-form{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,.8fr) auto;align-items:center}
+.project-task-form textarea{min-height:40px;height:40px;resize:vertical;font-size:.85rem;padding:7px 9px}
+.direction-task-form{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,.8fr) auto;gap:8px;margin:0 0 12px}
+.direction-task-form textarea{min-height:40px;height:40px;resize:vertical;font-size:.85rem;padding:7px 9px}
+.direction-task-content{flex:1;min-width:0}
+.direction-task-actions{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.project-task-move{min-width:34px}
+body[data-theme="dark"] .project-card{background:color-mix(in srgb,var(--project-color) 16%,var(--white));border-color:color-mix(in srgb,var(--project-color) 55%,var(--line))}
+body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--project-color, #879987) 9%,var(--white));border-color:color-mix(in srgb,var(--project-color, #879987) 38%,var(--line))}
+@media(max-width:760px){
+ .project-task-form,.direction-task-form{grid-template-columns:1fr}
+ .project-task-form textarea,.direction-task-form textarea{height:64px}
+}
+
 </style>
 </head>
 <body>
@@ -690,6 +715,7 @@ body[data-theme="dark"] .auth-error{color:#f0aaa0!important}
         <div class="field full"><label for="goalMin">Минимальная версия</label><textarea id="goalMin" name="minVersion" maxlength="500" placeholder="Что будет считаться успехом в плохую неделю?"></textarea></div>
         <div class="field full"><label for="goalMetric">Как пойму, что двигаюсь</label><input id="goalMetric" name="metric" maxlength="220" placeholder="Метрика усилий, а не только результата"></div>
         <div class="field full"><label for="goalStep">Первый шаг на этой неделе</label><textarea id="goalStep" name="firstStep" maxlength="500" placeholder="Небольшое конкретное действие"></textarea></div>
+        <div class="field full"><label for="goalComment">Пояснения к задаче</label><textarea id="goalComment" name="comment" maxlength="2000" rows="4" placeholder="Контекст, подробности, мысли и комментарии. На карточке доски текст не показывается."></textarea></div>
       </div>
       <p class="notice">Не нужно заполнять всё сразу. Достаточно названия и направления.</p>
       <div class="modal-actions">
@@ -875,7 +901,7 @@ body[data-theme="dark"] .auth-error{color:#f0aaa0!important}
   if (!boot || !boot.data) return;
 
   // Версия схемы данных, сохраняемых на сервере.
-  const SCHEMA_VERSION = 3;
+  const SCHEMA_VERSION = 4;
   const DIRECTIONS = {
     career: { label: 'Карьера', color: 'var(--career)' },
     health: { label: 'Здоровье', color: 'var(--health)' },
@@ -1007,7 +1033,7 @@ body[data-theme="dark"] .auth-error{color:#f0aaa0!important}
       typeof card.title === 'string' && card.title.trim().length > 0 &&
       Object.prototype.hasOwnProperty.call(DIRECTIONS, card.direction) &&
       COLUMNS.some(c => c.id === card.column) &&
-      ['why', 'minVersion', 'metric', 'firstStep'].every(k => card[k] === undefined || typeof card[k] === 'string') &&
+      ['why', 'minVersion', 'metric', 'firstStep', 'comment'].every(k => card[k] === undefined || typeof card[k] === 'string') &&
       typeof card.id === 'string' && card.id.length > 0;
   }
   function normalizeCard(card) {
@@ -1032,7 +1058,8 @@ body[data-theme="dark"] .auth-error{color:#f0aaa0!important}
       completedAt: card.completedAt || (card.column === 'done' ? updatedAt : ''),
       projectId: typeof card.projectId === 'string' ? card.projectId : '',
       projectName: typeof card.projectName === 'string' ? card.projectName : '',
-      projectTaskId: typeof card.projectTaskId === 'string' ? card.projectTaskId : ''
+      projectTaskId: typeof card.projectTaskId === 'string' ? card.projectTaskId : '',
+      comment: typeof card.comment === 'string' ? card.comment : ''
     };
   }
   function validWeekly(entry) {
@@ -1049,7 +1076,8 @@ body[data-theme="dark"] .auth-error{color:#f0aaa0!important}
       typeof task.id === 'string' && task.id.length > 0 &&
       typeof task.title === 'string' && task.title.trim().length > 0 &&
       Object.prototype.hasOwnProperty.call(DIRECTIONS, task.direction) &&
-      (task.done === undefined || typeof task.done === 'boolean');
+      (task.done === undefined || typeof task.done === 'boolean') &&
+      (task.comment === undefined || typeof task.comment === 'string');
   }
   function normalizeDirectionTask(task) {
     const stamp = nowISO();
@@ -1059,6 +1087,7 @@ body[data-theme="dark"] .auth-error{color:#f0aaa0!important}
       title: task.title.trim(),
       done: Boolean(task.done),
       completedAt: task.completedAt || (task.done ? (task.updatedAt || stamp) : ''),
+      comment: typeof task.comment === 'string' ? task.comment : '',
       createdAt: task.createdAt || stamp,
       updatedAt: task.updatedAt || stamp
     };
@@ -1070,7 +1099,8 @@ body[data-theme="dark"] .auth-error{color:#f0aaa0!important}
       (task.boardCardId === undefined || typeof task.boardCardId === 'string') &&
       (task.dueDate === undefined || typeof task.dueDate === 'string') &&
       (task.priority === undefined || ['', 'high', 'medium'].includes(task.priority)) &&
-      (task.deadlineId === undefined || typeof task.deadlineId === 'string');
+      (task.deadlineId === undefined || typeof task.deadlineId === 'string') &&
+      (task.comment === undefined || typeof task.comment === 'string');
   }
   function normalizeProjectTask(task) {
     const stamp = nowISO();
@@ -1079,6 +1109,7 @@ body[data-theme="dark"] .auth-error{color:#f0aaa0!important}
       done: Boolean(task.done), completedAt: task.completedAt || '',
       boardCardId: task.boardCardId || '',
       dueDate: task.dueDate || '', priority: task.priority || '', deadlineId: task.deadlineId || '',
+      comment: typeof task.comment === 'string' ? task.comment : '',
       createdAt: task.createdAt || stamp, updatedAt: task.updatedAt || stamp
     };
   }
@@ -1091,7 +1122,8 @@ body[data-theme="dark"] .auth-error{color:#f0aaa0!important}
       ['', 'high', 'medium'].includes(item.priority || '') &&
       (item.projectId === undefined || typeof item.projectId === 'string') &&
       (item.projectTaskId === undefined || typeof item.projectTaskId === 'string') &&
-      (item.boardCardId === undefined || typeof item.boardCardId === 'string');
+      (item.boardCardId === undefined || typeof item.boardCardId === 'string') &&
+      (item.comment === undefined || typeof item.comment === 'string');
   }
   function normalizeDeadline(item) {
     const stamp = nowISO();
@@ -1100,6 +1132,7 @@ body[data-theme="dark"] .auth-error{color:#f0aaa0!important}
       direction: item.direction, priority: item.priority || '',
       projectId: item.projectId || '', projectName: item.projectName || '',
       projectTaskId: item.projectTaskId || '', boardCardId: item.boardCardId || '',
+      comment: typeof item.comment === 'string' ? item.comment : '',
       createdAt: item.createdAt || stamp, updatedAt: item.updatedAt || stamp
     };
   }
@@ -1130,7 +1163,7 @@ body[data-theme="dark"] .auth-error{color:#f0aaa0!important}
 
   function validateImport(data) {
     if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('Корневой элемент должен быть JSON-объектом.');
-    if (![1, 2, 3].includes(data.schemaVersion)) throw new Error('Неподдерживаемая версия схемы. Поддерживаются версии 1, 2 и 3.');
+    if (![1, 2, 3, 4].includes(data.schemaVersion)) throw new Error('Неподдерживаемая версия схемы. Поддерживаются версии 1, 2, 3 и 4.');
     if (!Array.isArray(data.cards) || !Array.isArray(data.weekly)) throw new Error('В файле должны быть массивы cards и weekly.');
     if (data.directionTasks !== undefined && !Array.isArray(data.directionTasks)) throw new Error('Поле directionTasks должно быть массивом.');
     if (data.projects !== undefined && !Array.isArray(data.projects)) throw new Error('Поле projects должно быть массивом.');
@@ -1301,6 +1334,7 @@ body[data-theme="dark"] .auth-error{color:#f0aaa0!important}
         <button class="icon-btn" data-move="-1" data-id="${escapeHTML(card.id)}" aria-label="Переместить в предыдущую колонку" title="Влево" ${colIndex === 0 ? 'disabled' : ''}>←</button>
         <button class="icon-btn" data-move="1" data-id="${escapeHTML(card.id)}" aria-label="Переместить в следующую колонку" title="Вправо" ${colIndex === COLUMNS.length - 1 ? 'disabled' : ''}>→</button>
         <span class="spacer"></span>
+        <button class="icon-btn comment-action" data-card-comment="${escapeHTML(card.id)}" aria-label="${card.comment ? 'Открыть пояснение задачи' : 'Добавить пояснение к задаче'}" title="${card.comment ? 'Открыть пояснение' : 'Добавить пояснение'}">${card.comment ? '📝' : '＋'}</button>
         <button class="icon-btn" data-edit="${escapeHTML(card.id)}" aria-label="Редактировать цель">Изменить</button>
       </div>` : ''}
     </article>`;
@@ -1308,6 +1342,10 @@ body[data-theme="dark"] .auth-error{color:#f0aaa0!important}
   function bindBoardEvents() {
     if (!isCurrentWeekSelected()) return;
     board.querySelectorAll('[data-add-column]').forEach(btn => btn.addEventListener('click', () => openGoal(null, btn.dataset.addColumn)));
+    board.querySelectorAll('[data-card-comment]').forEach(btn => btn.addEventListener('click', () => {
+      openGoal(btn.dataset.cardComment);
+      setTimeout(() => $('#goalComment').focus(), 0);
+    }));
     board.querySelectorAll('[data-edit]').forEach(btn => btn.addEventListener('click', () => openGoal(btn.dataset.edit)));
     board.querySelectorAll('[data-move]').forEach(btn => btn.addEventListener('click', () => moveCard(btn.dataset.id, Number(btn.dataset.move))));
     board.querySelectorAll('[data-step]').forEach(input => input.addEventListener('change', () => {
@@ -1339,6 +1377,8 @@ body[data-theme="dark"] .auth-error{color:#f0aaa0!important}
       if (!task) continue;
       task.done = card.column === 'done';
       task.completedAt = task.done ? (card.completedAt || stamp) : '';
+      task.title = card.title;
+      task.comment = card.comment || '';
       task.updatedAt = stamp;
       return;
     }
@@ -2120,6 +2160,7 @@ body[data-theme="dark"] .auth-error{color:#f0aaa0!important}
       previousTask.boardCardId = card.id;
       previousTask.done = card.column === 'done';
       previousTask.completedAt = previousTask.done ? (card.completedAt || stamp) : '';
+      previousTask.comment = card.comment || '';
       previousTask.updatedAt = stamp;
     } else {
       if (previousProject && previousTask) {
@@ -2130,7 +2171,7 @@ body[data-theme="dark"] .auth-error{color:#f0aaa0!important}
       target.tasks.push({
         id: taskId, title: card.title, done: card.column === 'done',
         completedAt: card.column === 'done' ? (card.completedAt || stamp) : '',
-        boardCardId: card.id, createdAt: stamp, updatedAt: stamp
+        comment: card.comment || '', boardCardId: card.id, createdAt: stamp, updatedAt: stamp
       });
     }
     target.updatedAt = stamp;
@@ -2153,6 +2194,7 @@ body[data-theme="dark"] .auth-error{color:#f0aaa0!important}
     $('#goalMin').value = card?.minVersion || '';
     $('#goalMetric').value = card?.metric || '';
     $('#goalStep').value = card?.firstStep || '';
+    $('#goalComment').value = card?.comment || '';
     $('#deleteGoalBtn').classList.toggle('hidden', !card);
     goalDialog.showModal();
     setTimeout(() => $('#goalTitle').focus(), 0);
@@ -2167,6 +2209,7 @@ body[data-theme="dark"] .auth-error{color:#f0aaa0!important}
       title, direction: $('#goalDirection').value, column: $('#goalColumn').value,
       why: $('#goalWhy').value.trim(), minVersion: $('#goalMin').value.trim(),
       metric: $('#goalMetric').value.trim(), firstStep: $('#goalStep').value.trim(),
+      comment: $('#goalComment').value.trim(),
       projectId: $('#goalProject').value
     };
     const existing = state.cards.find(c => c.id === editingId);
