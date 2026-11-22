@@ -186,16 +186,62 @@ function dispatch_github_workflow(array $config, string $task, string $chatId, s
     $response = @file_get_contents($url, false, $context);
     $networkError = error_get_last();
     $status = 0;
+    $githubHeaders = [
+        'request_id' => null,
+        'accepted_permissions' => null,
+        'rate_limit_remaining' => null,
+        'rate_limit_reset' => null,
+        'retry_after' => null,
+        'sso_header_present' => false,
+    ];
     foreach (($http_response_header ?? []) as $header) {
         if (preg_match('/^HTTP\/\S+\s+(\d{3})/', $header, $matches)) {
             $status = (int)$matches[1];
+            continue;
+        }
+        $parts = explode(':', $header, 2);
+        if (count($parts) !== 2) {
+            continue;
+        }
+        $headerName = strtolower(trim($parts[0]));
+        $headerValue = trim($parts[1]);
+        switch ($headerName) {
+            case 'x-github-request-id':
+                $githubHeaders['request_id'] = substr($headerValue, 0, 120);
+                break;
+            case 'x-accepted-github-permissions':
+                $githubHeaders['accepted_permissions'] = substr($headerValue, 0, 300);
+                break;
+            case 'x-ratelimit-remaining':
+                $githubHeaders['rate_limit_remaining'] = substr($headerValue, 0, 30);
+                break;
+            case 'x-ratelimit-reset':
+                $githubHeaders['rate_limit_reset'] = substr($headerValue, 0, 30);
+                break;
+            case 'retry-after':
+                $githubHeaders['retry_after'] = substr($headerValue, 0, 30);
+                break;
+            case 'x-github-sso':
+                $githubHeaders['sso_header_present'] = true;
+                break;
         }
     }
+
+    $responseText = is_string($response) ? $response : '';
+    $responseData = json_decode($responseText, true);
+    $githubMessage = is_array($responseData) && isset($responseData['message'])
+        ? substr((string)$responseData['message'], 0, 700)
+        : null;
+    // GitHub's error JSON does not contain the bearer token, but redact it defensively.
+    $responsePreview = $responseText !== '' ? substr(str_replace($token, '[REDACTED]', $responseText), 0, 1200) : null;
 
     webhook_log('github.dispatch.finished', [
         'http_status' => $status,
         'response_received' => $response !== false,
-        'response_bytes' => $response === false ? 0 : strlen($response),
+        'response_bytes' => $response === false ? 0 : strlen($responseText),
+        'github_message' => $githubMessage,
+        'response_preview' => $status >= 400 ? $responsePreview : null,
+        'headers' => $githubHeaders,
         'network_error' => $response === false && is_array($networkError) ? substr((string)$networkError['message'], 0, 500) : null,
     ]);
 
