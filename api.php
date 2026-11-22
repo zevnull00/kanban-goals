@@ -42,57 +42,6 @@ if (!defined('KANBAN_PASSWORD_HASH') || !is_string(KANBAN_PASSWORD_HASH) || KANB
     api_response(500, ['ok' => false, 'message' => 'Не настроен серверный пароль.']);
 }
 
-function validate_telegram_webapp_init_data(string $rawInitData, string $botToken): array
-{
-    if ($rawInitData === '' || strlen($rawInitData) > 16384 || $botToken === '') {
-        throw new InvalidArgumentException('Не переданы данные Telegram.');
-    }
-
-    $params = [];
-    parse_str($rawInitData, $params);
-    $receivedHash = $params['hash'] ?? '';
-    if (!is_string($receivedHash) || !preg_match('/^[a-f0-9]{64}$/i', $receivedHash)) {
-        throw new InvalidArgumentException('Подпись Telegram отсутствует или имеет неверный формат.');
-    }
-
-    unset($params['hash']);
-    foreach ($params as $key => $value) {
-        if (!is_string($key) || !is_string($value)) {
-            throw new InvalidArgumentException('Некорректные данные Telegram.');
-        }
-    }
-
-    ksort($params, SORT_STRING);
-    $dataCheckParts = [];
-    foreach ($params as $key => $value) {
-        $dataCheckParts[] = $key . '=' . $value;
-    }
-    $dataCheckString = implode("\n", $dataCheckParts);
-
-    $secretKey = hash_hmac('sha256', 'WebAppData', $botToken, true);
-    $calculatedHash = hash_hmac('sha256', $dataCheckString, $secretKey);
-    if (!hash_equals(strtolower($receivedHash), strtolower($calculatedHash))) {
-        throw new InvalidArgumentException('Не удалось подтвердить подлинность данных Telegram.');
-    }
-
-    $authDate = $params['auth_date'] ?? '';
-    if (!ctype_digit($authDate)) {
-        throw new InvalidArgumentException('В данных Telegram отсутствует время авторизации.');
-    }
-    $authTimestamp = (int)$authDate;
-    if ($authTimestamp > time() + 60 || time() - $authTimestamp > 86400) {
-        throw new InvalidArgumentException('Данные Telegram устарели. Закройте и снова откройте приложение из бота.');
-    }
-
-    $userJson = $params['user'] ?? '';
-    $user = json_decode($userJson, true);
-    if (!is_array($user) || !isset($user['id']) || (!is_int($user['id']) && !ctype_digit((string)$user['id']))) {
-        throw new InvalidArgumentException('Telegram не передал идентификатор пользователя.');
-    }
-
-    return $user;
-}
-
 $isHttps = (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off')
     || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
 if (!$isHttps) {
@@ -196,46 +145,7 @@ if ($action === 'session') {
     api_response(200, ['ok' => true, 'authenticated' => !empty($_SESSION['authenticated'])]);
 }
 
-if ($action === 'telegram_login') {
-    $botToken = defined('KANBAN_TELEGRAM_BOT_TOKEN') && is_string(KANBAN_TELEGRAM_BOT_TOKEN)
-        ? trim(KANBAN_TELEGRAM_BOT_TOKEN)
-        : '';
-    $allowedIds = defined('KANBAN_TELEGRAM_ALLOWED_IDS') && is_array(KANBAN_TELEGRAM_ALLOWED_IDS)
-        ? KANBAN_TELEGRAM_ALLOWED_IDS
-        : [];
-
-    if ($botToken === '' || count($allowedIds) === 0) {
-        api_response(503, ['ok' => false, 'message' => 'Вход через Telegram ещё не настроен на сервере.']);
-    }
-
-    $rawInitData = $input['initData'] ?? '';
-    if (!is_string($rawInitData)) {
-        api_response(400, ['ok' => false, 'message' => 'Некорректные данные Telegram.']);
-    }
-
-    try {
-        $telegramUser = validate_telegram_webapp_init_data($rawInitData, $botToken);
-    } catch (InvalidArgumentException $e) {
-        api_response(401, ['ok' => false, 'message' => $e->getMessage()]);
-    }
-
-    $telegramUserId = (string)$telegramUser['id'];
-    $allowedIds = array_map('strval', $allowedIds);
-    if (!in_array($telegramUserId, $allowedIds, true)) {
-        api_response(403, ['ok' => false, 'message' => 'Этот Telegram-аккаунт не добавлен в список доступа.']);
-    }
-
-    session_regenerate_id(true);
-    $_SESSION['authenticated'] = true;
-    $_SESSION['auth_method'] = 'telegram';
-    $_SESSION['telegram_user_id'] = $telegramUserId;
-    api_response(200, ['ok' => true, 'authenticated' => true, 'method' => 'telegram']);
-}
-
 if ($action === 'login') {
-    if (defined('KANBAN_TELEGRAM_ONLY') && KANBAN_TELEGRAM_ONLY === true) {
-        api_response(403, ['ok' => false, 'message' => 'Вход по паролю отключён. Откройте канбан через Telegram.']);
-    }
     $lockedUntil = (int)($_SESSION['login_locked_until'] ?? 0);
     if ($lockedUntil > time()) {
         api_response(429, ['ok' => false, 'message' => 'Ты не Даша!']);
