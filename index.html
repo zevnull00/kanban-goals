@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>Канбан целей на 6 месяцев</title>
+<title>Канбан на 3 месяца</title>
 <style>
 :root{
   --paper:#faf7f0;--paper-deep:#f1ebdf;--ink:#393a35;--muted:#77786f;
@@ -327,12 +327,122 @@ body[data-theme="dark"] .project-task-row{background:#202722;border-color:#39433
 }
 @media print{.project-card,.project-task-row{background:#fff!important;color:#111!important}}
 
+
+/* Версия на 3 месяца: заметки и светофор имеют одинаковую ширину и высоту. */
+.top-panels{grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch}
+.top-panels>.panel{min-width:0;min-height:224px;height:100%;display:flex;flex-direction:column}
+.notes-panel-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.notes-panel-head h2{margin:0}
+.notes-counter{font-size:.72rem;color:var(--muted)}
+.notes-scroll{min-height:0;max-height:132px;overflow-y:auto;overscroll-behavior:contain;padding-right:4px;flex:1}
+.note-suggestion{padding:8px 10px;border:1px solid var(--line);border-radius:11px;background:rgba(145,170,145,.12);margin-bottom:7px}
+.note-suggestion-label{font-size:.7rem;font-weight:750;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.note-suggestion p{margin:2px 0 0;font-size:.88rem;font-weight:620;line-height:1.35}
+.reminder-list{list-style:none;margin:0;padding:0;display:grid;gap:5px}
+.reminder-list li{font-size:.81rem;line-height:1.3;padding:5px 7px 5px 22px;position:relative;border-radius:8px;background:rgba(180,165,135,.08);overflow-wrap:anywhere}
+.reminder-list li:before{content:"✳";position:absolute;left:7px;color:#b59b75}
+.custom-notes-list{margin-top:6px}
+.custom-note-row{display:flex;align-items:flex-start;gap:6px}
+.custom-note-row span{flex:1;min-width:0}
+.custom-note-row button{border:0;background:transparent;color:var(--muted);padding:0 3px;font-size:.9rem;line-height:1.2}
+.custom-note-form{display:flex;gap:7px;margin-top:8px}
+.custom-note-form input{min-width:0;padding:7px 9px;font-size:.82rem}
+.custom-note-form button{padding:5px 11px;flex:0 0 auto}
+.deadline-calendar-panel{margin:0 0 14px}
+.deadline-calendar-toolbar{display:flex;align-items:end;gap:9px;flex-wrap:wrap}
+.deadline-period-picker,.deadline-date-picker{display:flex;align-items:center;gap:7px}
+.deadline-period-picker{flex:0 0 135px;flex-direction:column;align-items:stretch}
+.deadline-period-picker label{font-size:.8rem;color:var(--muted)}
+.deadline-period-picker select{width:100%}
+.deadline-date-picker{flex:1;min-width:210px}
+.deadline-date-picker input{max-width:190px}
+.deadline-calendar-toolbar>.btn{margin-left:auto}
+.deadline-calendar-title{margin:13px 0 8px;font-size:1rem}
+.deadline-calendar-weekdays,.deadline-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.deadline-calendar-weekdays span{text-align:center;font-size:.72rem;color:var(--muted);font-weight:700;padding:3px}
+.deadline-calendar-day{min-width:0;min-height:78px;text-align:left;vertical-align:top;border:1px solid var(--line);border-radius:9px;padding:6px;background:var(--control-bg);color:var(--ink);overflow:hidden}
+.deadline-calendar-day.outside-month{opacity:.42}
+.deadline-calendar-day.selected-period{border-color:#8d9fbd}
+.deadline-calendar-day.has-deadlines{background:rgba(145,170,145,.13);border-color:rgba(124,170,131,.65)}
+.deadline-calendar-day-number{display:block;font-size:.78rem;font-weight:750;margin-bottom:4px}
+.deadline-calendar-event{display:block;font-size:.66rem;line-height:1.2;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-left:2px solid var(--green);padding-left:4px}
+.deadline-calendar-event.priority-high{border-left-color:var(--red)}
+.deadline-calendar-event.priority-medium{border-left-color:var(--yellow)}
+.calendar-more{display:block;font-size:.63rem;color:var(--muted);margin-top:2px}
+.calendar-hint{font-size:.75rem;color:var(--muted);margin:8px 0 0}
+.deadline-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:10px}
+.deadline-table{min-width:900px}
+.deadline-table th,.deadline-table td{vertical-align:middle}
+.table-sort-button{border:0;padding:0;background:transparent;color:inherit;font:inherit;font-weight:750;text-transform:uppercase;letter-spacing:inherit}
+.table-sort-button:hover{text-decoration:underline}
+.priority-select{min-width:150px;font-size:.82rem;font-weight:650}
+.priority-select[data-priority="high"]{background:#fbe4e1;border-color:#d88b82;color:#8d3028}
+.priority-select[data-priority="medium"]{background:#fff2cc;border-color:#d7b66f;color:#765716}
+.deadline-actions{display:flex;align-items:center;gap:5px;flex-wrap:wrap;min-width:220px}
+.deadline-actions select{min-width:130px;max-width:170px;font-size:.78rem;padding:6px}
+.priority-flag{display:inline-flex;align-items:center;gap:5px;font-weight:700;font-size:.8rem;white-space:nowrap}
+.priority-flag.high{color:#b94d43}.priority-flag.medium{color:#a47c22}
+.deadline-linked{font-size:.72rem;color:var(--muted);margin-top:3px}
+.deadline-print-header{display:none}
+.deadlines-footnote{margin-top:10px}
+body[data-theme="dark"] .note-suggestion{background:rgba(145,170,145,.10)}
+body[data-theme="dark"] .priority-select[data-priority="high"]{background:#512b2a;color:#ffd5d0;border-color:#98544d}
+body[data-theme="dark"] .priority-select[data-priority="medium"]{background:#4d4024;color:#ffe5a0;border-color:#8a713b}
+body[data-theme="dark"] .deadline-calendar-day.has-deadlines{background:rgba(124,170,131,.12)}
+body[data-theme="dark"] .deadline-calendar-day{background:var(--control-bg);color:var(--ink)}
+.deadline-print-header{font-size:12pt;font-weight:750;margin:0 0 8mm}
+@media(max-width:1050px){.top-panels{grid-template-columns:1fr}}
+@media(max-width:760px){
+ .deadline-filters{grid-template-columns:1fr 1fr}
+ .deadline-filters .report-filter:last-child{grid-column:1/-1}
+ .deadline-calendar-toolbar{align-items:stretch}
+ .deadline-calendar-toolbar>.btn{margin-left:0;min-height:42px}
+ .deadline-period-picker{flex:1 1 110px}
+ .deadline-date-picker{flex:2 1 190px}
+ .deadline-calendar-day{min-height:69px;padding:4px}
+ .deadline-calendar-event{font-size:.59rem}
+}
+@media(max-width:520px){
+ .deadline-filters{grid-template-columns:1fr}
+ .deadline-filters .report-filter:last-child{grid-column:auto}
+ .deadline-date-picker{min-width:100%;order:2}
+ .deadline-period-picker{order:1}
+ .deadline-calendar-toolbar>.btn{order:3;width:100%}
+ .deadline-calendar-day{min-height:62px;border-radius:6px}
+ .deadline-calendar-day-number{font-size:.7rem}
+ .deadline-calendar-event{font-size:.53rem;max-width:100%}
+ .calendar-more{font-size:.55rem}
+ .deadline-table{min-width:860px}
+}
+@media print{
+ body.print-deadlines-mode{background:#fff!important;color:#111!important}
+ body.print-deadlines-mode .topbar,
+ body.print-deadlines-mode .view-tabs,
+ body.print-deadlines-mode footer,
+ body.print-deadlines-mode [data-view-panel]:not([data-view-panel="deadlines"]),
+ body.print-deadlines-mode .deadline-calendar-panel,
+ body.print-deadlines-mode .deadline-filters,
+ body.print-deadlines-mode .deadlines-section-head,
+ body.print-deadlines-mode .deadline-actions,
+ body.print-deadlines-mode .priority-select,
+ body.print-deadlines-mode .deadlines-footnote{display:none!important}
+ body.print-deadlines-mode main{display:block!important;padding:0!important;margin:0!important;max-width:none!important}
+ body.print-deadlines-mode [data-view-panel="deadlines"]{display:block!important}
+ body.print-deadlines-mode .deadline-print-header{display:block!important}
+ body.print-deadlines-mode .table-wrap{overflow:visible!important;border:0!important}
+ body.print-deadlines-mode .deadline-table{width:100%!important;min-width:0!important;table-layout:fixed}
+ body.print-deadlines-mode .deadline-table th,
+ body.print-deadlines-mode .deadline-table td{padding:6px 7px!important;border-bottom:1px solid #bbb!important;font-size:9pt!important;color:#111!important}
+ body.print-deadlines-mode .deadline-table th:last-child,
+ body.print-deadlines-mode .deadline-table td:last-child{display:none!important}
+}
+
 </style>
 </head>
 <body>
 <header class="topbar">
   <div>
-    <h1>Канбан целей на 6 месяцев</h1>
+    <h1>Канбан на 3 месяца</h1>
     <p class="subtitle"><span data-motivation></span></p>
   </div>
   <div class="actions" aria-label="Действия с данными">
@@ -345,19 +455,38 @@ body[data-theme="dark"] .project-task-row{background:#202722;border-color:#39433
   </div>
 </header>
 <main>
-  <div id="printHeader" class="print-header"><strong>Канбан целей на 6 месяцев</strong><span id="printWeekLabel"></span></div>
+  <div id="printHeader" class="print-header"><strong>Канбан на 3 месяца</strong><span id="printWeekLabel"></span></div>
   <nav class="view-tabs" aria-label="Разделы">
     <button class="view-tab active" data-view-tab="board" aria-selected="true">Доска</button>
     <button class="view-tab" data-view-tab="directions" aria-selected="false">Направления</button>
     <button class="view-tab" data-view-tab="signals" aria-selected="false">Светофор по неделям</button>
     <button class="view-tab" data-view-tab="reports" aria-selected="false">Выполненные задачи</button>
+    <button class="view-tab" data-view-tab="deadlines" aria-selected="false">Дедлайны</button>
   </nav>
 
   <section class="view-panel" data-view-panel="board">
     <section class="top-panels">
-      <div class="panel">
-        <h2>Небольшие напоминания</h2>
-        <div class="reminders"><span data-motivation></span><span data-motivation></span></div>
+      <div class="panel notes-panel">
+        <div class="notes-panel-head">
+          <h2>Заметки</h2>
+          <span class="notes-counter">коротко и по делу</span>
+        </div>
+        <div class="notes-scroll">
+          <div class="note-suggestion">
+            <span class="note-suggestion-label">Совет на сегодня</span>
+            <p id="noteSuggestion"></p>
+          </div>
+          <ul class="reminder-list" id="permanentNotes">
+            <li>Планы можно переносить на следующую неделю</li>
+            <li>Не более 3 средних или 1 большой в неделю</li>
+            <li>Трудные недели тоже существуют</li>
+          </ul>
+          <ul class="reminder-list custom-notes-list" id="customNotesList"></ul>
+        </div>
+        <form id="customNoteForm" class="custom-note-form">
+          <input id="customNoteInput" maxlength="180" placeholder="Добавить свою заметку…" aria-label="Новая заметка">
+          <button class="btn" type="submit" aria-label="Добавить заметку">＋</button>
+        </form>
       </div>
       <div class="panel">
         <h2>Еженедельный светофор</h2>
@@ -457,6 +586,74 @@ body[data-theme="dark"] .project-task-row{background:#202722;border-color:#39433
       </table>
     </div>
   </section>
+
+  <section class="view-panel hidden" data-view-panel="deadlines" aria-label="Дедлайны">
+    <div class="section-head deadlines-section-head">
+      <div>
+        <h2>Дедлайны</h2>
+        <p>Все ближайшие сроки, привязанные к проектам или пока самостоятельные.</p>
+      </div>
+      <button class="btn primary" id="newDeadlineBtn">＋ Новый дедлайн</button>
+    </div>
+
+    <div class="deadline-calendar-panel panel">
+      <div class="deadline-calendar-toolbar">
+        <div class="deadline-period-picker">
+          <label for="deadlinePeriodMode">Период</label>
+          <select id="deadlinePeriodMode">
+            <option value="month">Месяц</option>
+            <option value="week">Неделя</option>
+          </select>
+        </div>
+        <div class="deadline-date-picker">
+          <button class="icon-btn" id="deadlinePrevBtn" type="button" aria-label="Предыдущий период">←</button>
+          <input type="date" id="deadlineAnchorDate" aria-label="Выбрать дату периода">
+          <button class="icon-btn" id="deadlineNextBtn" type="button" aria-label="Следующий период">→</button>
+        </div>
+        <button class="btn" id="printDeadlinesBtn" type="button">Печать периода</button>
+      </div>
+      <h3 class="deadline-calendar-title" id="deadlineCalendarTitle"></h3>
+      <div class="deadline-calendar-weekdays" aria-hidden="true">
+        <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
+      </div>
+      <div class="deadline-calendar-grid" id="deadlineCalendarGrid" aria-label="Календарь дедлайнов"></div>
+      <p class="calendar-hint">Нажми на день, чтобы посмотреть дедлайны этой недели.</p>
+    </div>
+
+    <div class="report-filters deadline-filters panel">
+      <div class="report-filter">
+        <label for="deadlineDirectionFilter">Направление</label>
+        <select id="deadlineDirectionFilter">
+          <option value="all">Все направления</option>
+          <option value="career">Карьера</option><option value="health">Здоровье</option>
+          <option value="study">Учёба</option><option value="home">Быт</option>
+        </select>
+      </div>
+      <div class="report-filter">
+        <label for="deadlineProjectFilter">Проект</label>
+        <select id="deadlineProjectFilter"><option value="all">Все проекты</option></select>
+      </div>
+      <div class="report-filter">
+        <label for="deadlineSort">Сортировка</label>
+        <select id="deadlineSort">
+          <option value="asc">Сначала ближайшие</option>
+          <option value="desc">Сначала дальние</option>
+        </select>
+      </div>
+    </div>
+    <div class="deadline-print-header" id="deadlinePrintHeader"></div>
+    <p class="report-count" id="deadlineCount" aria-live="polite"></p>
+    <div class="table-wrap deadline-table-wrap">
+      <table class="signal-table deadline-table">
+        <thead><tr>
+          <th><button class="table-sort-button" id="deadlineSortToggle" type="button">Дата дедлайна ↑</button></th>
+          <th>Задача / событие</th><th>Проект</th><th>Направление</th><th>Приоритет</th><th>Действия</th>
+        </tr></thead>
+        <tbody id="deadlinesTableBody"></tbody>
+      </table>
+    </div>
+    <p class="notice deadlines-footnote">Красный флажок — большой приоритет. Жёлтый — средний. Сами дедлайны не исчезают после переноса срока или создания задачи.</p>
+  </section>
 </main>
 <footer><span data-motivation></span> Данные сохраняются в этом браузере; для переноса на другое устройство используй «Экспорт» и «Импорт».</footer>
 
@@ -483,6 +680,55 @@ body[data-theme="dark"] .project-task-row{background:#202722;border-color:#39433
   </div>
 </dialog>
 
+
+<dialog id="deadlineDialog" aria-labelledby="deadlineDialogTitle">
+  <div class="modal-head">
+    <h2 id="deadlineDialogTitle">Новый дедлайн</h2>
+    <button class="icon-btn" id="closeDeadline" aria-label="Закрыть окно">✕</button>
+  </div>
+  <div class="modal-body">
+    <form id="deadlineForm">
+      <div class="form-grid">
+        <div class="field full">
+          <label for="deadlineTitle">Название *</label>
+          <input id="deadlineTitle" required maxlength="180" placeholder="Например, сдать отчёт">
+        </div>
+        <div class="field">
+          <label for="deadlineDate">Дата дедлайна *</label>
+          <input id="deadlineDate" type="date" required>
+        </div>
+        <div class="field">
+          <label for="deadlineDirection">Направление *</label>
+          <select id="deadlineDirection" required>
+            <option value="career">Карьера</option><option value="health">Здоровье</option>
+            <option value="study">Учёба</option><option value="home">Быт</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label for="deadlineProject">Добавить задачу в проект</label>
+          <select id="deadlineProject"><option value="">Пока без проекта</option></select>
+          <small>При выборе проекта дедлайн сразу создаст связанную задачу в нём. Её можно будет отправить и на канбан-доску.</small>
+        </div>
+        <div class="field">
+          <label for="deadlinePriority">Приоритет</label>
+          <select id="deadlinePriority">
+            <option value="">Без флажка</option>
+            <option value="high">🔴 Большой приоритет</option>
+            <option value="medium">🟡 Средний приоритет</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn danger hidden" id="deleteDeadlineBtn">Удалить дедлайн</button>
+        <div class="modal-actions-right">
+          <button type="button" class="btn" id="cancelDeadline">Отмена</button>
+          <button type="submit" class="btn primary">Сохранить</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</dialog>
+
 <dialog id="importDialog" aria-labelledby="importTitle">
   <div class="modal-head"><h2 id="importTitle">Импорт данных</h2><button class="icon-btn" id="closeImport" aria-label="Закрыть окно импорта">✕</button></div>
   <div class="modal-body">
@@ -502,7 +748,7 @@ body[data-theme="dark"] .project-task-row{background:#202722;border-color:#39433
 
   // Версия схемы и ключ локального хранилища.
   const STORAGE_KEY = 'kanbanGoals.v1';
-  const SCHEMA_VERSION = 2;
+  const SCHEMA_VERSION = 3;
   const DIRECTIONS = {
     career: { label: 'Карьера', color: 'var(--career)' },
     health: { label: 'Здоровье', color: 'var(--health)' },
@@ -524,7 +770,23 @@ body[data-theme="dark"] .project-task-row{background:#202722;border-color:#39433
   let pendingImport = null;
   let toastTimer = null;
   let currentDirection = 'career';
+  let deadlinePeriodMode = 'month';
+  let deadlineAnchorDate = localDateString();
+  let deadlineSortDirection = 'asc';
+  let editingDeadlineId = null;
   const THEME_KEY = 'kanbanGoals.theme.v1';
+  const NOTES_ADVICE_POOL = [
+    'Запиши только следующий шаг — не весь маршрут.',
+    'Оставь в неделе свободное место для неожиданностей.',
+    'Сначала заверши начатое, потом добавляй новое.',
+    'Большую задачу раздели на действия по 20–40 минут.',
+    'Проверь, не пора ли снять лишнее с повестки.',
+    'Отдых тоже должен быть частью плана.',
+    'Выбирай задачи по важности, а не по громкости.',
+    'Один конкретный результат лучше длинного списка намерений.',
+    'Сложную задачу начни с черновика или пробного шага.',
+    'Планируй не только работу, но и время на восстановление.'
+  ];
   const MOTIVATIONAL_POOL = [
     'Большое дело тоже состоит из маленьких шагов.',
     'Не обязательно быстро. Важно — в нужную сторону.',
@@ -575,6 +837,25 @@ body[data-theme="dark"] .project-task-row{background:#202722;border-color:#39433
     catch (error) { return 'light'; }
   }
 
+
+  function renderBoardNotes() {
+    const suggestion = NOTES_ADVICE_POOL[Math.floor(Math.random() * NOTES_ADVICE_POOL.length)];
+    const target = $('#noteSuggestion');
+    if (target) target.textContent = suggestion;
+    const list = $('#customNotesList');
+    if (!list) return;
+    const notes = Array.isArray(state.customNotes) ? state.customNotes : [];
+    list.innerHTML = notes.map(note => `
+      <li class="custom-note-row"><span>${escapeHTML(note.text)}</span>
+        <button type="button" data-note-delete="${escapeHTML(note.id)}" aria-label="Удалить заметку" title="Удалить">×</button>
+      </li>`).join('');
+    list.querySelectorAll('[data-note-delete]').forEach(button => button.addEventListener('click', () => {
+      state.customNotes = state.customNotes.filter(note => note.id !== button.dataset.noteDelete);
+      saveState();
+      renderBoardNotes();
+    }));
+  }
+
   function uid() {
     if (globalThis.crypto && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
     return 'goal-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 11);
@@ -590,7 +871,7 @@ body[data-theme="dark"] .project-task-row{background:#202722;border-color:#39433
     d.setDate(d.getDate() - day);
     return localDateString(d);
   }
-  function emptyState() { return { cards: [], weekly: [], directionTasks: [], projects: [] }; }
+  function emptyState() { return { cards: [], weekly: [], directionTasks: [], projects: [], deadlines: [], customNotes: [] }; }
 
   function validCard(card) {
     return card && typeof card === 'object' &&
@@ -657,7 +938,10 @@ body[data-theme="dark"] .project-task-row{background:#202722;border-color:#39433
     return task && typeof task === 'object' && typeof task.id === 'string' && task.id.length > 0 &&
       typeof task.title === 'string' && task.title.trim().length > 0 &&
       (task.done === undefined || typeof task.done === 'boolean') &&
-      (task.boardCardId === undefined || typeof task.boardCardId === 'string');
+      (task.boardCardId === undefined || typeof task.boardCardId === 'string') &&
+      (task.dueDate === undefined || typeof task.dueDate === 'string') &&
+      (task.priority === undefined || ['', 'high', 'medium'].includes(task.priority)) &&
+      (task.deadlineId === undefined || typeof task.deadlineId === 'string');
   }
   function normalizeProjectTask(task) {
     const stamp = nowISO();
@@ -665,9 +949,39 @@ body[data-theme="dark"] .project-task-row{background:#202722;border-color:#39433
       id: String(task.id || uid()), title: task.title.trim(),
       done: Boolean(task.done), completedAt: task.completedAt || '',
       boardCardId: task.boardCardId || '',
+      dueDate: task.dueDate || '', priority: task.priority || '', deadlineId: task.deadlineId || '',
       createdAt: task.createdAt || stamp, updatedAt: task.updatedAt || stamp
     };
   }
+  function validDeadline(item) {
+    return item && typeof item === 'object' &&
+      typeof item.id === 'string' && item.id.length > 0 &&
+      typeof item.title === 'string' && item.title.trim().length > 0 &&
+      typeof item.dueDate === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(item.dueDate) &&
+      Object.prototype.hasOwnProperty.call(DIRECTIONS, item.direction) &&
+      ['', 'high', 'medium'].includes(item.priority || '') &&
+      (item.projectId === undefined || typeof item.projectId === 'string') &&
+      (item.projectTaskId === undefined || typeof item.projectTaskId === 'string') &&
+      (item.boardCardId === undefined || typeof item.boardCardId === 'string');
+  }
+  function normalizeDeadline(item) {
+    const stamp = nowISO();
+    return {
+      id: String(item.id || uid()), title: item.title.trim(), dueDate: item.dueDate,
+      direction: item.direction, priority: item.priority || '',
+      projectId: item.projectId || '', projectName: item.projectName || '',
+      projectTaskId: item.projectTaskId || '', boardCardId: item.boardCardId || '',
+      createdAt: item.createdAt || stamp, updatedAt: item.updatedAt || stamp
+    };
+  }
+  function validCustomNote(note) {
+    return note && typeof note === 'object' && typeof note.id === 'string' && note.id.length > 0 &&
+      typeof note.text === 'string' && note.text.trim().length > 0;
+  }
+  function normalizeCustomNote(note) {
+    return { id: String(note.id || uid()), text: note.text.trim(), createdAt: note.createdAt || nowISO() };
+  }
+
   function validProject(project) {
     return project && typeof project === 'object' && typeof project.id === 'string' && project.id.length > 0 &&
       typeof project.name === 'string' && project.name.trim().length > 0 &&
@@ -687,19 +1001,25 @@ body[data-theme="dark"] .project-task-row{background:#202722;border-color:#39433
 
   function validateImport(data) {
     if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('Корневой элемент должен быть JSON-объектом.');
-    if (![1, SCHEMA_VERSION].includes(data.schemaVersion)) throw new Error('Неподдерживаемая версия схемы. Поддерживаются версии 1 и 2.');
+    if (![1, 2, 3].includes(data.schemaVersion)) throw new Error('Неподдерживаемая версия схемы. Поддерживаются версии 1, 2 и 3.');
     if (!Array.isArray(data.cards) || !Array.isArray(data.weekly)) throw new Error('В файле должны быть массивы cards и weekly.');
     if (data.directionTasks !== undefined && !Array.isArray(data.directionTasks)) throw new Error('Поле directionTasks должно быть массивом.');
     if (data.projects !== undefined && !Array.isArray(data.projects)) throw new Error('Поле projects должно быть массивом.');
+    if (data.deadlines !== undefined && !Array.isArray(data.deadlines)) throw new Error('Поле deadlines должно быть массивом.');
+    if (data.customNotes !== undefined && !Array.isArray(data.customNotes)) throw new Error('Поле customNotes должно быть массивом.');
     if (!data.cards.every(validCard)) throw new Error('Одна или несколько карточек имеют неверную структуру или обязательные поля.');
     if (!data.weekly.every(validWeekly)) throw new Error('Одна или несколько записей светофора имеют неверную структуру.');
     if (Array.isArray(data.directionTasks) && !data.directionTasks.every(validDirectionTask)) throw new Error('Одна или несколько задач направления имеют неверную структуру.');
     if (Array.isArray(data.projects) && !data.projects.every(validProject)) throw new Error('Один или несколько проектов имеют неверную структуру.');
+    if (Array.isArray(data.deadlines) && !data.deadlines.every(validDeadline)) throw new Error('Один или несколько дедлайнов имеют неверную структуру.');
+    if (Array.isArray(data.customNotes) && !data.customNotes.every(validCustomNote)) throw new Error('Одна или несколько пользовательских заметок имеют неверную структуру.');
     return {
       cards: data.cards.map(normalizeCard),
       weekly: data.weekly.map(normalizeWeekly),
       directionTasks: Array.isArray(data.directionTasks) ? data.directionTasks.map(normalizeDirectionTask) : [],
-      projects: Array.isArray(data.projects) ? data.projects.map(normalizeProject) : []
+      projects: Array.isArray(data.projects) ? data.projects.map(normalizeProject) : [],
+      deadlines: Array.isArray(data.deadlines) ? data.deadlines.map(normalizeDeadline) : [],
+      customNotes: Array.isArray(data.customNotes) ? data.customNotes.map(normalizeCustomNote) : []
     };
   }
   // Временное локальное хранение: данные находятся в localStorage этого браузера.
@@ -717,7 +1037,11 @@ body[data-theme="dark"] .project-task-row{background:#202722;border-color:#39433
         directionTasks: Array.isArray(data.directionTasks)
           ? data.directionTasks.filter(validDirectionTask).map(normalizeDirectionTask) : [],
         projects: Array.isArray(data.projects)
-          ? data.projects.filter(validProject).map(normalizeProject) : []
+          ? data.projects.filter(validProject).map(normalizeProject) : [],
+        deadlines: Array.isArray(data.deadlines)
+          ? data.deadlines.filter(validDeadline).map(normalizeDeadline) : [],
+        customNotes: Array.isArray(data.customNotes)
+          ? data.customNotes.filter(validCustomNote).map(normalizeCustomNote) : []
       };
     } catch (error) {
       console.warn('Не удалось прочитать локальные данные:', error);
@@ -733,7 +1057,9 @@ body[data-theme="dark"] .project-task-row{background:#202722;border-color:#39433
         cards: state.cards,
         weekly: state.weekly,
         directionTasks: state.directionTasks,
-        projects: state.projects
+        projects: state.projects,
+        deadlines: state.deadlines,
+        customNotes: state.customNotes
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch (error) {
@@ -958,6 +1284,7 @@ body[data-theme="dark"] .project-task-row{background:#202722;border-color:#39433
                 <div class="project-task-main">
                   <input type="checkbox" data-project-task-toggle="${escapeHTML(task.id)}" ${done ? 'checked' : ''} ${card ? 'disabled title="Статус связанной задачи меняется на доске"' : ''} aria-label="Задача выполнена">
                   <div><div class="project-task-title">${escapeHTML(task.title)}</div>
+                    ${task.dueDate ? `<div class="project-task-meta">Дедлайн: ${escapeHTML(formatDate(task.dueDate))} ${task.priority === 'high' ? '🔴' : task.priority === 'medium' ? '🟡' : ''}</div>` : ''}
                     ${task.completedAt && done ? `<div class="project-task-meta">Выполнено: ${escapeHTML(formatDateTime(task.completedAt))}</div>` : ''}</div>
                 </div>
                 <div class="project-task-actions">
@@ -1193,6 +1520,391 @@ body[data-theme="dark"] .project-task-row{background:#202722;border-color:#39433
   });
   ['reportFrom','reportTo','reportDirection'].forEach(id => $('#' + id).addEventListener('change', renderReport));
 
+
+  // Дедлайны: период календаря, список, приоритеты и связь с задачами проектов.
+  function deadlinePeriodRange() {
+    const anchor = new Date((deadlineAnchorDate || localDateString()) + 'T12:00:00');
+    let start, end;
+    if (deadlinePeriodMode === 'week') {
+      const monday = (anchor.getDay() + 6) % 7;
+      start = new Date(anchor);
+      start.setDate(start.getDate() - monday);
+      end = new Date(start);
+      end.setDate(end.getDate() + 6);
+    } else {
+      start = new Date(anchor.getFullYear(), anchor.getMonth(), 1, 12);
+      end = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0, 12);
+    }
+    return { start, end, startKey: localDateString(start), endKey: localDateString(end) };
+  }
+  function dateLabel(date) {
+    return date.toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' });
+  }
+  function shiftDeadlinePeriod(delta) {
+    const anchor = new Date((deadlineAnchorDate || localDateString()) + 'T12:00:00');
+    if (deadlinePeriodMode === 'week') anchor.setDate(anchor.getDate() + (7 * delta));
+    else anchor.setMonth(anchor.getMonth() + delta, 1);
+    deadlineAnchorDate = localDateString(anchor);
+    $('#deadlineAnchorDate').value = deadlineAnchorDate;
+    renderDeadlines();
+  }
+  function renderDeadlineCalendar() {
+    const range = deadlinePeriodRange();
+    const title = $('#deadlineCalendarTitle');
+    if (deadlinePeriodMode === 'month') {
+      title.textContent = range.start.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+    } else {
+      title.textContent = `Неделя: ${dateLabel(range.start)} — ${dateLabel(range.end)}`;
+    }
+    const gridStart = deadlinePeriodMode === 'week'
+      ? new Date(range.start)
+      : new Date(mondayOf(localDateString(range.start)) + 'T12:00:00');
+    const dayCount = deadlinePeriodMode === 'week' ? 7 : 42;
+    const today = localDateString();
+    const monthKey = range.start.getMonth();
+    const rows = [];
+    for (let index = 0; index < dayCount; index++) {
+      const day = new Date(gridStart);
+      day.setDate(day.getDate() + index);
+      const key = localDateString(day);
+      const list = state.deadlines.filter(item => item.dueDate === key)
+        .sort((a,b) => a.title.localeCompare(b.title, 'ru'));
+      const isOutside = deadlinePeriodMode === 'month' && day.getMonth() !== monthKey;
+      const events = list.slice(0, 2).map(item =>
+        `<span class="deadline-calendar-event priority-${escapeHTML(item.priority || 'none')}" title="${escapeHTML(item.title)}">${escapeHTML(item.title)}</span>`
+      ).join('');
+      const more = list.length > 2 ? `<span class="calendar-more">+${list.length - 2} ещё</span>` : '';
+      rows.push(`<button type="button" class="deadline-calendar-day ${isOutside ? 'outside-month' : ''} ${list.length ? 'has-deadlines' : ''} ${key === today ? 'is-today' : ''}" data-calendar-day="${key}" aria-label="${escapeHTML(dateLabel(day))}, дедлайнов: ${list.length}">
+        <span class="deadline-calendar-day-number">${day.getDate()}</span>${events}${more}
+      </button>`);
+    }
+    $('#deadlineCalendarGrid').innerHTML = rows.join('');
+    $('#deadlineCalendarGrid').querySelectorAll('[data-calendar-day]').forEach(button => button.addEventListener('click', () => {
+      deadlineAnchorDate = button.dataset.calendarDay;
+      deadlinePeriodMode = 'week';
+      $('#deadlinePeriodMode').value = 'week';
+      $('#deadlineAnchorDate').value = deadlineAnchorDate;
+      renderDeadlines();
+    }));
+  }
+  function getDeadlineRows() {
+    const range = deadlinePeriodRange();
+    const direction = $('#deadlineDirectionFilter').value;
+    const projectId = $('#deadlineProjectFilter').value;
+    return state.deadlines.filter(item =>
+      item.dueDate >= range.startKey && item.dueDate <= range.endKey &&
+      (direction === 'all' || item.direction === direction) &&
+      (projectId === 'all' || (projectId === 'none' ? !item.projectId : item.projectId === projectId))
+    ).sort((a,b) => deadlineSortDirection === 'asc'
+      ? a.dueDate.localeCompare(b.dueDate) || a.title.localeCompare(b.title, 'ru')
+      : b.dueDate.localeCompare(a.dueDate) || a.title.localeCompare(b.title, 'ru'));
+  }
+  function refreshDeadlineProjectFilter() {
+    const select = $('#deadlineProjectFilter');
+    if (!select) return;
+    const current = select.value || 'all';
+    const projects = [...state.projects].sort((a,b) => a.name.localeCompare(b.name, 'ru'));
+    select.innerHTML = '<option value="all">Все проекты</option><option value="none">Без проекта</option>' +
+      projects.map(project => `<option value="${escapeHTML(project.id)}">${escapeHTML(project.name)}</option>`).join('');
+    select.value = [...select.options].some(option => option.value === current) ? current : 'all';
+  }
+  function deadlineProjectOptions(direction, selectedId = '') {
+    const projects = state.projects.filter(project => project.direction === direction);
+    return '<option value="">Без проекта</option>' + projects.map(project =>
+      `<option value="${escapeHTML(project.id)}" ${project.id === selectedId ? 'selected' : ''}>${escapeHTML(project.name)}</option>`
+    ).join('');
+  }
+  function linkDeadlineToProject(deadline, projectId) {
+    const target = state.projects.find(project => project.id === projectId && project.direction === deadline.direction);
+    if (!target) return false;
+
+    let previousProject = null;
+    let previousTask = null;
+    for (const project of state.projects) {
+      const task = project.tasks.find(item => item.id === deadline.projectTaskId);
+      if (task) { previousProject = project; previousTask = task; break; }
+    }
+
+    let task;
+    if (previousTask && previousProject === target) {
+      task = previousTask;
+      task.title = deadline.title;
+      task.dueDate = deadline.dueDate;
+      task.priority = deadline.priority;
+      task.deadlineId = deadline.id;
+      task.updatedAt = nowISO();
+    } else {
+      if (previousTask && previousProject) {
+        previousProject.tasks = previousProject.tasks.filter(item => item.id !== previousTask.id);
+        previousProject.updatedAt = nowISO();
+      }
+      task = {
+        id: uid(), title: deadline.title, done: false, completedAt: '',
+        boardCardId: '', dueDate: deadline.dueDate, priority: deadline.priority,
+        deadlineId: deadline.id, createdAt: nowISO(), updatedAt: nowISO()
+      };
+      target.tasks.push(task);
+      target.updatedAt = nowISO();
+    }
+
+    deadline.projectId = target.id;
+    deadline.projectName = target.name;
+    deadline.projectTaskId = task.id;
+    deadline.updatedAt = nowISO();
+    return true;
+  }
+  function sendDeadlineToBoard(deadline) {
+    let project = state.projects.find(item => item.id === deadline.projectId);
+    let task = project?.tasks.find(item => item.id === deadline.projectTaskId);
+    if (!project && deadline.projectTaskId) {
+      for (const item of state.projects) {
+        const found = item.tasks.find(candidate => candidate.id === deadline.projectTaskId);
+        if (found) { project = item; task = found; break; }
+      }
+    }
+    let card = state.cards.find(item => item.id === deadline.boardCardId);
+    if (!card && task?.boardCardId) card = state.cards.find(item => item.id === task.boardCardId);
+    if (!card) {
+      const stamp = nowISO();
+      card = {
+        id: uid(), title: deadline.title, direction: deadline.direction,
+        why: '', minVersion: '', metric: '', firstStep: '', column: 'backlog',
+        createdAt: stamp, updatedAt: stamp, firstStepDone: false, completedAt: '',
+        statusHistory: [{ column: 'backlog', at: stamp }],
+        projectId: project?.id || '', projectName: project?.name || '', projectTaskId: task?.id || ''
+      };
+      state.cards.push(card);
+    }
+    if (task) {
+      task.boardCardId = card.id;
+      task.title = deadline.title;
+      task.dueDate = deadline.dueDate;
+      task.priority = deadline.priority;
+      task.updatedAt = nowISO();
+    } else if (project) {
+      task = {
+        id: uid(), title: deadline.title, done: false, completedAt: '',
+        boardCardId: card.id, dueDate: deadline.dueDate, priority: deadline.priority,
+        deadlineId: deadline.id, createdAt: nowISO(), updatedAt: nowISO()
+      };
+      project.tasks.push(task);
+      project.updatedAt = nowISO();
+      card.projectTaskId = task.id;
+    }
+    deadline.boardCardId = card.id;
+    if (project && task) {
+      deadline.projectId = project.id;
+      deadline.projectName = project.name;
+      deadline.projectTaskId = task.id;
+    }
+    deadline.updatedAt = nowISO();
+    saveState();
+    render();
+    renderDirections();
+    renderDeadlines();
+    showToast('Дедлайн отправлен на канбан-доску.');
+  }
+  function renderDeadlines() {
+    const body = $('#deadlinesTableBody');
+    if (!body) return;
+    $('#deadlinePeriodMode').value = deadlinePeriodMode;
+    $('#deadlineAnchorDate').value = deadlineAnchorDate;
+    refreshDeadlineProjectFilter();
+    renderDeadlineCalendar();
+
+    const range = deadlinePeriodRange();
+    $('#deadlinePrintHeader').textContent = `Дедлайны на период: ${dateLabel(range.start)} — ${dateLabel(range.end)}`;
+    const rows = getDeadlineRows();
+    $('#deadlineCount').textContent = `Дедлайнов за период: ${rows.length}`;
+
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="6" class="table-empty">На выбранный период дедлайнов нет.</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map(item => {
+      const projects = state.projects.filter(project => project.direction === item.direction)
+        .sort((a,b) => a.name.localeCompare(b.name, 'ru'));
+      const projectOptions = '<option value="">Выбрать проект…</option>' + projects.map(project =>
+        `<option value="${escapeHTML(project.id)}" ${project.id === item.projectId ? 'selected' : ''}>${escapeHTML(project.name)}</option>`
+      ).join('');
+      const priorityLabel = item.priority === 'high' ? '🔴 Большой' : item.priority === 'medium' ? '🟡 Средний' : 'Без флажка';
+      const linked = item.projectTaskId ? '<div class="deadline-linked">Задача создана в проекте</div>' : '';
+      const boardLabel = item.boardCardId ? 'На доске' : 'На доску';
+      return `<tr>
+        <td data-label="Дата">${escapeHTML(formatDate(item.dueDate))}</td>
+        <td data-label="Задача">
+          <strong>${escapeHTML(item.title)}</strong>${linked}
+        </td>
+        <td data-label="Проект">${escapeHTML(item.projectName || '—')}</td>
+        <td data-label="Направление">${escapeHTML(DIRECTIONS[item.direction]?.label || '—')}</td>
+        <td data-label="Приоритет">
+          <select class="priority-select" data-deadline-priority="${escapeHTML(item.id)}" data-priority="${escapeHTML(item.priority || '')}" aria-label="Приоритет дедлайна">
+            <option value="" ${!item.priority ? 'selected' : ''}>Без флажка</option>
+            <option value="high" ${item.priority === 'high' ? 'selected' : ''}>🔴 Большой</option>
+            <option value="medium" ${item.priority === 'medium' ? 'selected' : ''}>🟡 Средний</option>
+          </select>
+        </td>
+        <td data-label="Действия">
+          <div class="deadline-actions">
+            <select data-deadline-project-select="${escapeHTML(item.id)}" aria-label="Проект для дедлайна">${projectOptions}</select>
+            <button class="icon-btn" data-deadline-to-project="${escapeHTML(item.id)}" title="Создать или перенести задачу в выбранный проект">В проект</button>
+            <button class="icon-btn" data-deadline-to-board="${escapeHTML(item.id)}" title="Добавить задачу на канбан-доску">${boardLabel}</button>
+            <button class="icon-btn" data-deadline-edit="${escapeHTML(item.id)}">Изменить</button>
+            <button class="icon-btn danger" data-deadline-delete="${escapeHTML(item.id)}">Удалить</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+
+    body.querySelectorAll('[data-deadline-priority]').forEach(select => select.addEventListener('change', () => {
+      const item = state.deadlines.find(deadline => deadline.id === select.dataset.deadlinePriority);
+      if (!item) return;
+      item.priority = select.value;
+      item.updatedAt = nowISO();
+      for (const project of state.projects) {
+        const task = project.tasks.find(candidate => candidate.id === item.projectTaskId);
+        if (task) { task.priority = item.priority; task.updatedAt = item.updatedAt; }
+      }
+      saveState();
+      renderDeadlines();
+      renderDirections();
+    }));
+    body.querySelectorAll('[data-deadline-to-project]').forEach(button => button.addEventListener('click', () => {
+      const item = state.deadlines.find(deadline => deadline.id === button.dataset.deadlineToProject);
+      const select = body.querySelector(`[data-deadline-project-select="${button.dataset.deadlineToProject}"]`);
+      if (!item || !select?.value) { showToast('Сначала выбери проект.'); return; }
+      if (!linkDeadlineToProject(item, select.value)) { showToast('Выбранный проект не подходит для этого направления.'); return; }
+      saveState();
+      renderDeadlines();
+      renderDirections();
+      showToast('Задача добавлена в проект.');
+    }));
+    body.querySelectorAll('[data-deadline-to-board]').forEach(button => button.addEventListener('click', () => {
+      const item = state.deadlines.find(deadline => deadline.id === button.dataset.deadlineToBoard);
+      if (item) sendDeadlineToBoard(item);
+    }));
+    body.querySelectorAll('[data-deadline-edit]').forEach(button => button.addEventListener('click', () => openDeadline(button.dataset.deadlineEdit)));
+    body.querySelectorAll('[data-deadline-delete]').forEach(button => button.addEventListener('click', () => {
+      const item = state.deadlines.find(deadline => deadline.id === button.dataset.deadlineDelete);
+      if (!item || !confirm(`Удалить дедлайн «${item.title}»? Связанная задача в проекте останется, но потеряет срок.`)) return;
+      for (const project of state.projects) {
+        const task = project.tasks.find(candidate => candidate.id === item.projectTaskId);
+        if (task) {
+          task.deadlineId = '';
+          task.dueDate = '';
+          task.priority = '';
+          task.updatedAt = nowISO();
+        }
+      }
+      state.deadlines = state.deadlines.filter(deadline => deadline.id !== item.id);
+      saveState();
+      renderDeadlines();
+      renderDirections();
+    }));
+  }
+
+  function populateDeadlineProjects(direction, selectedId = '') {
+    const select = $('#deadlineProject');
+    if (!select) return;
+    select.innerHTML = deadlineProjectOptions(direction, selectedId);
+    select.value = selectedId;
+  }
+  function openDeadline(id = null) {
+    const item = id ? state.deadlines.find(deadline => deadline.id === id) : null;
+    editingDeadlineId = id;
+    $('#deadlineDialogTitle').textContent = item ? 'Изменить дедлайн' : 'Новый дедлайн';
+    $('#deadlineTitle').value = item?.title || '';
+    $('#deadlineDate').value = item?.dueDate || localDateString();
+    $('#deadlineDirection').value = item?.direction || 'career';
+    populateDeadlineProjects($('#deadlineDirection').value, item?.projectId || '');
+    $('#deadlinePriority').value = item?.priority || '';
+    $('#deleteDeadlineBtn').classList.toggle('hidden', !item);
+    $('#deadlineDialog').showModal();
+  }
+  function closeDeadline() {
+    $('#deadlineDialog').close();
+    editingDeadlineId = null;
+  }
+  $('#deadlineDirection').addEventListener('change', () => populateDeadlineProjects($('#deadlineDirection').value, ''));
+  $('#deadlineForm').addEventListener('submit', event => {
+    event.preventDefault();
+    const title = $('#deadlineTitle').value.trim();
+    const dueDate = $('#deadlineDate').value;
+    if (!title || !dueDate) return;
+    const fields = {
+      title, dueDate, direction: $('#deadlineDirection').value,
+      priority: $('#deadlinePriority').value, projectId: $('#deadlineProject').value
+    };
+    let item = state.deadlines.find(deadline => deadline.id === editingDeadlineId);
+    const stamp = nowISO();
+    if (item) {
+      Object.assign(item, { title, dueDate, direction: fields.direction, priority: fields.priority, updatedAt: stamp });
+      if (fields.projectId) linkDeadlineToProject(item, fields.projectId);
+      else {
+        for (const project of state.projects) {
+          const task = project.tasks.find(candidate => candidate.id === item.projectTaskId);
+          if (task) { task.deadlineId = ''; task.dueDate = ''; task.priority = ''; task.updatedAt = stamp; }
+        }
+        item.projectId = ''; item.projectName = ''; item.projectTaskId = '';
+      }
+    } else {
+      item = { id: uid(), ...fields, projectName: '', projectTaskId: '', boardCardId: '', createdAt: stamp, updatedAt: stamp };
+      state.deadlines.push(item);
+      if (fields.projectId) linkDeadlineToProject(item, fields.projectId);
+    }
+    saveState();
+    closeDeadline();
+    renderDeadlines();
+    renderDirections();
+    showToast('Дедлайн сохранён.');
+  });
+  $('#newDeadlineBtn').addEventListener('click', () => openDeadline());
+  $('#closeDeadline').addEventListener('click', closeDeadline);
+  $('#cancelDeadline').addEventListener('click', closeDeadline);
+  $('#deleteDeadlineBtn').addEventListener('click', () => {
+    const item = state.deadlines.find(deadline => deadline.id === editingDeadlineId);
+    if (!item || !confirm(`Удалить дедлайн «${item.title}»? Связанная задача в проекте останется без срока.`)) return;
+    for (const project of state.projects) {
+      const task = project.tasks.find(candidate => candidate.id === item.projectTaskId);
+      if (task) { task.deadlineId = ''; task.dueDate = ''; task.priority = ''; }
+    }
+    state.deadlines = state.deadlines.filter(deadline => deadline.id !== item.id);
+    saveState();
+    closeDeadline();
+    renderDeadlines();
+    renderDirections();
+  });
+  $('#deadlinePeriodMode').addEventListener('change', () => {
+    deadlinePeriodMode = $('#deadlinePeriodMode').value;
+    renderDeadlines();
+  });
+  $('#deadlineAnchorDate').addEventListener('change', () => {
+    deadlineAnchorDate = $('#deadlineAnchorDate').value || localDateString();
+    renderDeadlines();
+  });
+  $('#deadlinePrevBtn').addEventListener('click', () => shiftDeadlinePeriod(-1));
+  $('#deadlineNextBtn').addEventListener('click', () => shiftDeadlinePeriod(1));
+  $('#deadlineDirectionFilter').addEventListener('change', renderDeadlines);
+  $('#deadlineProjectFilter').addEventListener('change', renderDeadlines);
+  $('#deadlineSort').addEventListener('change', () => {
+    deadlineSortDirection = $('#deadlineSort').value;
+    $('#deadlineSortToggle').textContent = deadlineSortDirection === 'asc' ? 'Дата дедлайна ↑' : 'Дата дедлайна ↓';
+    renderDeadlines();
+  });
+  $('#deadlineSortToggle').addEventListener('click', () => {
+    deadlineSortDirection = deadlineSortDirection === 'asc' ? 'desc' : 'asc';
+    $('#deadlineSort').value = deadlineSortDirection;
+    $('#deadlineSortToggle').textContent = deadlineSortDirection === 'asc' ? 'Дата дедлайна ↑' : 'Дата дедлайна ↓';
+    renderDeadlines();
+  });
+  $('#printDeadlinesBtn').addEventListener('click', () => {
+    switchView('deadlines');
+    renderDeadlines();
+    document.body.classList.add('print-deadlines-mode');
+    window.print();
+  });
+  window.addEventListener('afterprint', () => document.body.classList.remove('print-deadlines-mode'));
+
   // Переключение основных вкладок.
   function switchView(view) {
     document.querySelectorAll('[data-view-tab]').forEach(tab => {
@@ -1206,6 +1918,7 @@ body[data-theme="dark"] .project-task-row{background:#202722;border-color:#39433
     if (view === 'directions') renderDirections();
     if (view === 'signals') renderSignals();
     if (view === 'reports') renderReport();
+    if (view === 'deadlines') renderDeadlines();
   }
 
   // Список проектов в форме цели. Проект выбирается только из того же направления.
@@ -1377,7 +2090,9 @@ body[data-theme="dark"] .project-task-row{background:#202722;border-color:#39433
       cards: state.cards,
       weekly: state.weekly,
       directionTasks: state.directionTasks,
-      projects: state.projects
+      projects: state.projects,
+      deadlines: state.deadlines,
+      customNotes: state.customNotes
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -1396,7 +2111,7 @@ body[data-theme="dark"] .project-task-row{background:#202722;border-color:#39433
     try {
       const parsed = JSON.parse(await file.text());
       pendingImport = validateImport(parsed);
-      $('#importSummary').textContent = `Проверка пройдена: ${pendingImport.cards.length} карточек, ${pendingImport.projects.length} проектов, ${pendingImport.directionTasks.length} задач направлений и ${pendingImport.weekly.length} записей светофора.`;
+      $('#importSummary').textContent = `Проверка пройдена: ${pendingImport.cards.length} карточек, ${pendingImport.projects.length} проектов, ${pendingImport.deadlines.length} дедлайнов, ${pendingImport.directionTasks.length} задач направлений и ${pendingImport.weekly.length} записей светофора.`;
       importDialog.showModal();
     } catch (error) {
       pendingImport = null;
@@ -1415,7 +2130,9 @@ body[data-theme="dark"] .project-task-row{background:#202722;border-color:#39433
         cards: pendingImport.cards,
         weekly: pendingImport.weekly,
         directionTasks: pendingImport.directionTasks,
-        projects: pendingImport.projects
+        projects: pendingImport.projects,
+        deadlines: pendingImport.deadlines,
+        customNotes: pendingImport.customNotes
       };
     } else {
       const cardIdMap = new Map();
@@ -1436,8 +2153,17 @@ body[data-theme="dark"] .project-task-row{background:#202722;border-color:#39433
         projectId: card.projectId ? (projectIdMap.get(card.projectId) || '') : '',
         projectTaskId: card.projectTaskId ? (taskIdMap.get(card.projectTaskId) || '') : ''
       }));
+      const deadlineAdditions = pendingImport.deadlines.map(item => ({
+        ...item, id: uid(),
+        projectId: item.projectId ? (projectIdMap.get(item.projectId) || '') : '',
+        projectTaskId: item.projectTaskId ? (taskIdMap.get(item.projectTaskId) || '') : '',
+        boardCardId: item.boardCardId ? (cardIdMap.get(item.boardCardId) || '') : ''
+      }));
+      const noteAdditions = pendingImport.customNotes.map(note => ({ ...note, id: uid() }));
       state.cards.push(...cardAdditions);
       state.projects.push(...projectAdditions);
+      state.deadlines.push(...deadlineAdditions);
+      state.customNotes.push(...noteAdditions);
       const weeks = new Map(state.weekly.map(w => [w.week, w]));
       pendingImport.weekly.forEach(item => weeks.set(item.week, item));
       state.weekly = [...weeks.values()];
@@ -1453,6 +2179,19 @@ body[data-theme="dark"] .project-task-row{background:#202722;border-color:#39433
     end.setDate(end.getDate() + 6);
     $('#printWeekLabel').textContent = `Отчётная неделя: ${formatDate(week)} — ${end.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' })}`;
   }
+
+  $('#customNoteForm').addEventListener('submit', event => {
+    event.preventDefault();
+    const input = $('#customNoteInput');
+    const value = input.value.trim();
+    if (!value) { input.focus(); return; }
+    state.customNotes.push({ id: uid(), text: value, createdAt: nowISO() });
+    input.value = '';
+    saveState();
+    renderBoardNotes();
+    showToast('Заметка добавлена.');
+  });
+
   $('#printBtn').addEventListener('click', () => {
     switchView('board');
     updatePrintWeekLabel();
@@ -1470,10 +2209,14 @@ body[data-theme="dark"] .project-task-row{background:#202722;border-color:#39433
 
   applyTheme(loadTheme());
   applyMotivationalPhrases();
+  renderBoardNotes();
   updatePrintWeekLabel();
+  $('#deadlineAnchorDate').value = deadlineAnchorDate;
   render();
   renderWeek();
   renderSignals();
+  refreshDeadlineProjectFilter();
+  renderDeadlines();
 })();
 </script>
 </body>
