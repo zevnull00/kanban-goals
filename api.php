@@ -55,7 +55,7 @@ function validate_telegram_webapp_init_data(string $rawInitData, string $botToke
         throw new InvalidArgumentException('Подпись Telegram отсутствует или имеет неверный формат.');
     }
 
-    unset($params['hash'], $params['signature']);
+    unset($params['hash']);
     foreach ($params as $key => $value) {
         if (!is_string($key) || !is_string($value)) {
             throw new InvalidArgumentException('Некорректные данные Telegram.');
