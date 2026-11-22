@@ -149,7 +149,7 @@ jobs:
     if: needs.edit.outputs.changed == 'true' && needs.commit.result == 'success'
     uses: ./.github/workflows/deploy-reg-ru.yml
     with:
-      remote_path: "/www/zevnull.ru/"
+      remote_path: "www/zevnull.ru"
     secrets: inherit
 
   notify:
