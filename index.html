@@ -475,6 +475,13 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
  .project-task-form textarea,.direction-task-form textarea{height:64px}
 }
 
+.app-footer{
+  max-width:1500px;margin:28px auto 0;padding:14px 28px 22px;
+  border-top:1px solid var(--line);display:flex;justify-content:flex-end;
+  color:var(--muted);font-size:.78rem;letter-spacing:.02em
+}
+@media(max-width:600px){.app-footer{padding:12px 16px 18px;margin-top:20px}}
+@media print{.app-footer{display:none}}
 </style>
 </head>
 <body>
@@ -787,6 +794,9 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
     <div class="modal-actions"><span></span><div class="modal-actions-right"><button class="btn" id="cancelImport">Отмена</button><button class="btn primary" id="confirmImport">Импортировать</button></div></div>
   </div>
 </dialog>
+<footer class="app-footer" aria-label="Информация о версии">
+  <span>Версия 1.0.0</span>
+</footer>
 <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
 
