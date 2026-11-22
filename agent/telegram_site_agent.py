@@ -179,6 +179,19 @@ def run() -> int:
         "temperature": 0.1,
         "max_tokens": 12000,
     })
+    usage = response.get("usage")
+    if isinstance(usage, dict):
+        print("REGCLOUD_USAGE " + json.dumps({
+            "model": model,
+            "usage": usage,
+        }, ensure_ascii=False, sort_keys=True))
+    else:
+        print("REGCLOUD_USAGE " + json.dumps({
+            "model": model,
+            "usage": None,
+            "note": "API response did not include a usage object",
+            "response_keys": sorted(response.keys()),
+        }, ensure_ascii=False, sort_keys=True))
     choices = response.get("choices")
     if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
         raise AgentError("Модель не вернула вариант ответа.")
