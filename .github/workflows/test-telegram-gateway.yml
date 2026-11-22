@@ -1,0 +1,31 @@
+name: Test Cloudflare Telegram Gateway
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Send one test message through Cloudflare Worker
+        env:
+          GATEWAY_URL: ${{ secrets.TELEGRAM_GATEWAY_URL }}
+          GATEWAY_SECRET: ${{ secrets.TELEGRAM_GATEWAY_SECRET }}
+          CHAT_ID: "848638447"
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${GATEWAY_URL:?Missing TELEGRAM_GATEWAY_URL repository secret}"
+          : "${GATEWAY_SECRET:?Missing TELEGRAM_GATEWAY_SECRET repository secret}"
+          MESSAGE="Проверка: GitHub Actions успешно отправляет уведомления через Cloudflare Gateway."
+          jq -n --arg chat_id "$CHAT_ID" --arg text "$MESSAGE" \
+            '{chat_id: $chat_id, text: $text, disable_web_page_preview: true}' > request.json
+          curl --fail-with-body --silent --show-error \
+            "${GATEWAY_URL%/}/notify" \
+            -H "Content-Type: application/json" \
+            -H "X-Gateway-Secret: ${GATEWAY_SECRET}" \
+            --data-binary @request.json
