@@ -32,6 +32,7 @@ jobs:
     outputs:
       changed: ${{ steps.agent.outputs.changed }}
       final_message: ${{ steps.agent.outputs.final_message }}
+      usage_summary: ${{ steps.agent.outputs.usage_summary }}
     steps:
       - name: Checkout repository without a persisted GitHub token
         uses: actions/checkout@v5
@@ -160,6 +161,7 @@ jobs:
           COMMIT_RESULT: ${{ needs.commit.result }}
           DEPLOY_RESULT: ${{ needs.deploy.result }}
           AGENT_MESSAGE: ${{ needs.edit.outputs.final_message }}
+          USAGE_SUMMARY: ${{ needs.edit.outputs.usage_summary }}
         shell: bash
         run: |
           set -euo pipefail
@@ -181,6 +183,13 @@ jobs:
 
           Отчёт агента:
           $SUMMARY"
+          fi
+
+          if [[ -n "${USAGE_SUMMARY:-}" ]]; then
+            TEXT="$TEXT
+
+          Токены по данным API:
+          $USAGE_SUMMARY"
           fi
 
           jq -n --arg chat_id "$CHAT_ID" --arg text "$TEXT" \
