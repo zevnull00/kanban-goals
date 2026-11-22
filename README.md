@@ -39,15 +39,15 @@
 
 ## Telegram-бот для изменений сайта
 
-Поток: Telegram webhook → GitHub Actions workflow `telegram-codex.yml` → OpenAI Codex Action → проверка → commit в `main` → reusable workflow `deploy-reg-ru.yml` → уведомление в Telegram.
+Поток: Telegram webhook → GitHub Actions workflow `telegram-codex.yml` → собственный агент на API Рег.облака → проверка → commit в `main` → reusable workflow `deploy-reg-ru.yml` → уведомление в Telegram.
 
-В репозитории находятся `telegram-webhook.php`, `AGENTS.md` и `.github/workflows/telegram-codex.yml`. Codex ограничен изменением `index.html`; серверный PHP API, webhook, приватные конфигурации и workflow защищены от изменений со стороны агента.
+В репозитории находятся `telegram-webhook.php`, `AGENTS.md`, `agent/telegram_site_agent.py` и `.github/workflows/telegram-codex.yml`. Агент обращается к OpenAI-совместимому API Рег.облака (`https://ai.reg.cloud/v1`), получает доступные модели через `/models` и отправляет задачу в `/chat/completions`. Он может изменять только `index.html`; серверный PHP API, webhook, приватные конфигурации и workflow защищены от изменений со стороны агента. Для применения изменений агент возвращает точечные операции поиска и замены; GitHub Actions проверяет получившийся файл, JavaScript и список изменённых файлов.
 
 ### GitHub Actions secrets
 
 В Settings → Secrets and variables → Actions добавьте:
 
-- `OPENAI_API_KEY` — ключ OpenAI API;
+- `REGCLOUD_API_KEY` — API-ключ сервиса «ИИ-модели» Рег.облака;
 - `TELEGRAM_BOT_TOKEN` — токен бота от BotFather.
 
 Существующие `REG_SFTP_HOST`, `REG_SFTP_PORT`, `REG_SFTP_USER` и `REG_SFTP_PASSWORD` используются повторно для публикации.
@@ -74,7 +74,7 @@ return [
 
 После загрузки `telegram-webhook.php` установите webhook Telegram методом `setWebhook`, передав URL `https://zevnull.ru/telegram-webhook.php`, тот же `secret_token` и `allowed_updates: ["message"]`.
 
-**Не помещайте токены в GitHub-файлы, сообщения Telegram или код сайта.** Владелец и девушка должны отправить `/start` боту; если ID пока не разрешён, бот вернёт собственный Telegram ID для внесения в приватный конфиг.
+**Не помещайте токены в GitHub-файлы, сообщения Telegram или код сайта.** Владелец и девушка должны отправить `/start` боту; если ID пока не разрешён, бот вернёт собственный Telegram ID для внесения в приватный конфиг. Секрет `REGCLOUD_API_KEY` хранится только в GitHub Actions Secrets и не размещается на хостинге.
 
 ## Разработка
 
