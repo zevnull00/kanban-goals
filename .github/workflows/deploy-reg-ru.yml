@@ -17,7 +17,7 @@ on:
   workflow_call:
     inputs:
       remote_path:
-        description: "Absolute SFTP path to the target directory"
+        description: "Directory relative to the SFTP home directory"
         required: true
         type: string
 
@@ -82,6 +82,7 @@ jobs:
           REG_SFTP_PASSWORD: ${{ secrets.REG_SFTP_PASSWORD }}
         run: |
           set -euo pipefail
+          REMOTE_PATH="${REMOTE_PATH%/}"
           {
             printf 'put index.html "%s/.index.html.uploading"\n' "$REMOTE_PATH"
             printf 'put api.php "%s/.api.php.uploading"\n' "$REMOTE_PATH"
@@ -108,6 +109,7 @@ jobs:
           REG_SFTP_PASSWORD: ${{ secrets.REG_SFTP_PASSWORD }}
         run: |
           set -euo pipefail
+          REMOTE_PATH="${REMOTE_PATH%/}"
           INDEX_BACKUP="index.html.backup.${GITHUB_RUN_ID}"
           API_BACKUP="api.php.backup.${GITHUB_RUN_ID}"
           WEBHOOK_BACKUP="telegram-webhook.php.backup.${GITHUB_RUN_ID}"
@@ -140,6 +142,7 @@ jobs:
           REG_SFTP_PASSWORD: ${{ secrets.REG_SFTP_PASSWORD }}
         run: |
           set -euo pipefail
+          REMOTE_PATH="${REMOTE_PATH%/}"
           INDEX_BACKUP="index.html.backup.${GITHUB_RUN_ID}"
           API_BACKUP="api.php.backup.${GITHUB_RUN_ID}"
           WEBHOOK_BACKUP="telegram-webhook.php.backup.${GITHUB_RUN_ID}"
