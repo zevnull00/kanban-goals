@@ -44,6 +44,9 @@ if (!defined('KANBAN_PASSWORD_HASH') || !is_string(KANBAN_PASSWORD_HASH) || KANB
 
 $isHttps = (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off')
     || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+if (!$isHttps) {
+    api_response(400, ['ok' => false, 'message' => 'Для безопасного входа открой сайт по HTTPS.']);
+}
 session_name('kanban_session');
 session_set_cookie_params([
     'lifetime' => 0,
@@ -143,11 +146,24 @@ if ($action === 'session') {
 }
 
 if ($action === 'login') {
+    $lockedUntil = (int)($_SESSION['login_locked_until'] ?? 0);
+    if ($lockedUntil > time()) {
+        api_response(429, ['ok' => false, 'message' => 'Ты не Даша!']);
+    }
+
     $password = $input['password'] ?? '';
     if (!is_string($password) || !password_verify($password, KANBAN_PASSWORD_HASH)) {
+        $failures = (int)($_SESSION['login_failures'] ?? 0) + 1;
+        if ($failures >= 8) {
+            $_SESSION['login_failures'] = 0;
+            $_SESSION['login_locked_until'] = time() + 60;
+        } else {
+            $_SESSION['login_failures'] = $failures;
+        }
         usleep(350000);
         api_response(401, ['ok' => false, 'message' => 'Ты не Даша!']);
     }
+    unset($_SESSION['login_failures'], $_SESSION['login_locked_until']);
     session_regenerate_id(true);
     $_SESSION['authenticated'] = true;
     api_response(200, ['ok' => true, 'authenticated' => true]);
