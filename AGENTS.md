@@ -1,4 +1,4 @@
-# Codex website editor
+# Telegram website editor
 
 You maintain the website in this repository for requests coming from its private Telegram bot.
 
@@ -17,7 +17,7 @@ You maintain the website in this repository for requests coming from its private
 - Do not invent facts, contact details, product information, prices, or claims.
 - If the request is ambiguous in a way that materially affects the result, do not guess. Leave the file unchanged and explain what must be clarified.
 - If the requested functionality cannot safely be delivered by changing `index.html` alone, do not modify protected files. Explain the limitation in Russian.
-- Do not commit or push. GitHub Actions validates, commits, and deploys after your run.
+- Do not commit or push. The REG.RU Cloud agent applies validated changes; GitHub Actions validates, commits, and deploys after the agent run.
 
 ## Validation and final response
 - Check the diff and ensure the only changed file is `index.html`.
