@@ -1620,9 +1620,17 @@ body[data-theme="dark"] .deadline-calendar-day{background:var(--control-bg);colo
 
     let previousProject = null;
     let previousTask = null;
-    for (const project of state.projects) {
-      const task = project.tasks.find(item => item.id === deadline.projectTaskId);
-      if (task) { previousProject = project; previousTask = task; break; }
+    const findPreviousTask = taskId => {
+      if (!taskId) return;
+      for (const project of state.projects) {
+        const task = project.tasks.find(item => item.id === taskId);
+        if (task) { previousProject = project; previousTask = task; return; }
+      }
+    };
+    findPreviousTask(deadline.projectTaskId);
+    if (!previousTask && deadline.boardCardId) {
+      const linkedCard = state.cards.find(card => card.id === deadline.boardCardId);
+      if (linkedCard?.projectTaskId) findPreviousTask(linkedCard.projectTaskId);
     }
 
     let task;
@@ -1640,7 +1648,9 @@ body[data-theme="dark"] .deadline-calendar-day{background:var(--control-bg);colo
         previousProject.updatedAt = nowISO();
       }
       task = {
-        id: uid(), title: deadline.title, done: false, completedAt: '',
+        id: uid(), title: deadline.title,
+        done: Boolean(previousTask?.done),
+        completedAt: previousTask?.completedAt || '',
         boardCardId: existingBoardCardId, dueDate: deadline.dueDate, priority: deadline.priority,
         deadlineId: deadline.id, createdAt: nowISO(), updatedAt: nowISO()
       };
