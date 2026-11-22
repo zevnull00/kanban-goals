@@ -6,7 +6,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>Канбан на 3 месяца</title>
-<script src="https://telegram.org/js/telegram-web-app.js?65"></script>
 <style>
 :root{
   --paper:#faf7f0;--paper-deep:#f1ebdf;--ink:#393a35;--muted:#77786f;
@@ -448,7 +447,6 @@ body:not(.app-ready)>footer{display:none!important}
 .auth-label{font-size:.88rem;font-weight:650;color:var(--muted)}
 .auth-card input{width:100%;min-height:46px}
 .auth-card .btn{min-height:46px}
-.auth-hint{font-size:.82rem;overflow-wrap:anywhere;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:rgba(141,159,189,.10)}
 .auth-error{padding:10px 12px;border:1px solid #c98d83;border-radius:10px;background:rgba(201,141,131,.12);color:#9b4f46!important;font-weight:650}
 body[data-theme="dark"] .auth-error{color:#f0aaa0!important}
 
@@ -855,69 +853,33 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
       if (session.authenticated) {
         bootData = await loadServerData();
       } else {
-        const telegramWebApp = window.Telegram?.WebApp;
-        if (telegramWebApp) {
-          telegramWebApp.ready();
-          telegramWebApp.expand();
-        }
-
-        let telegramLoginError = '';
-        const telegramInitData = typeof telegramWebApp?.initData === 'string'
-          ? telegramWebApp.initData
-          : '';
-
-        if (telegramInitData) {
-          try {
-            await api('telegram_login', { initData: telegramInitData });
-            bootData = await loadServerData();
-          } catch (error) {
-            telegramLoginError = error.message || 'Неизвестная ошибка Telegram.';
-          }
-        }
-
-        if (!bootData) {
-          gate.classList.remove('hidden');
-
-          const telegramUserId = telegramWebApp?.initDataUnsafe?.user?.id;
-          if (telegramUserId !== undefined && telegramUserId !== null && !form.querySelector('.auth-hint')) {
-            const hint = document.createElement('p');
-            hint.className = 'auth-hint';
-            hint.textContent = 'Ваш Telegram ID: ' + String(telegramUserId);
-            form.appendChild(hint);
-          }
-
-          if (telegramLoginError) {
-            errorBox.textContent = 'Не удалось войти через Telegram: ' + telegramLoginError;
-            errorBox.classList.remove('hidden');
-          }
-
-          bootData = await new Promise(resolve => {
-            const handler = async event => {
-              event.preventDefault();
-              if (submitButton.disabled) return;
-              errorBox.classList.add('hidden');
-              submitButton.disabled = true;
-              const password = passwordInput.value;
-              passwordInput.value = '';
-              try {
-                await api('login', { password });
-                const loaded = await loadServerData();
-                form.removeEventListener('submit', handler);
-                resolve(loaded);
-              } catch (error) {
-                errorBox.textContent = (error.status === 401 || error.status === 429)
-                  ? 'Ты не Даша!'
-                  : 'Не удалось войти: ' + error.message;
-                errorBox.classList.remove('hidden');
-                passwordInput.focus();
-              } finally {
-                submitButton.disabled = false;
-              }
-            };
-            form.addEventListener('submit', handler);
-            if (!telegramInitData) passwordInput.focus();
-          });
-        }
+        gate.classList.remove('hidden');
+        bootData = await new Promise(resolve => {
+          const handler = async event => {
+            event.preventDefault();
+            if (submitButton.disabled) return;
+            errorBox.classList.add('hidden');
+            submitButton.disabled = true;
+            const password = passwordInput.value;
+            passwordInput.value = '';
+            try {
+              await api('login', { password });
+              const loaded = await loadServerData();
+              form.removeEventListener('submit', handler);
+              resolve(loaded);
+            } catch (error) {
+              errorBox.textContent = (error.status === 401 || error.status === 429)
+                ? 'Ты не Даша!'
+                : 'Не удалось войти: ' + error.message;
+              errorBox.classList.remove('hidden');
+              passwordInput.focus();
+            } finally {
+              submitButton.disabled = false;
+            }
+          };
+          form.addEventListener('submit', handler);
+          passwordInput.focus();
+        });
       }
 
       gate.classList.add('hidden');
