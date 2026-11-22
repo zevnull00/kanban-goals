@@ -13,37 +13,16 @@ function webhook_reply(int $status, array $payload): void
     exit;
 }
 
-function telegram_api(string $token, string $method, array $payload): array
+function send_telegram_message($chatId, string $message): void
 {
-    $url = 'https://api.telegram.org/bot' . $token . '/' . $method;
-    $context = stream_context_create([
-        'http' => [
-            'method' => 'POST',
-            'header' => "Content-Type: application/json\r\n",
-            'content' => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-            'timeout' => 12,
-            'ignore_errors' => true,
-        ],
+    // Telegram supports executing a Bot API method from the webhook response.
+    // This avoids a second outbound connection from REG.RU back to Telegram.
+    webhook_reply(200, [
+        'method' => 'sendMessage',
+        'chat_id' => (string)$chatId,
+        'text' => $message,
+        'disable_web_page_preview' => true,
     ]);
-    $response = @file_get_contents($url, false, $context);
-    if ($response === false) {
-        error_log('Telegram webhook: Telegram API request failed.');
-        return ['ok' => false];
-    }
-    $decoded = json_decode($response, true);
-    return is_array($decoded) ? $decoded : ['ok' => false];
-}
-
-function send_telegram_message(array $config, $chatId, string $message): void
-{
-    $token = (string)($config['telegram_bot_token'] ?? '');
-    if ($token !== '') {
-        telegram_api($token, 'sendMessage', [
-            'chat_id' => $chatId,
-            'text' => $message,
-            'disable_web_page_preview' => true,
-        ]);
-    }
 }
 
 function dispatch_github_workflow(array $config, string $task, string $chatId, string $userId): bool
@@ -81,7 +60,7 @@ function dispatch_github_workflow(array $config, string $task, string $chatId, s
                 'Content-Type: application/json',
             ]) . "\r\n",
             'content' => $body,
-            'timeout' => 15,
+            'timeout' => 8,
             'ignore_errors' => true,
         ],
     ]);
@@ -144,30 +123,30 @@ $chatId = (string)$chat['id'];
 $userId = (string)$from['id'];
 $allowedIds = array_map('strval', (array)($config['telegram_allowed_user_ids'] ?? []));
 if (!in_array($userId, $allowedIds, true) || $chatId !== $userId) {
-    send_telegram_message($config, $chatId, 'Пока нет доступа к этому боту. Ваш Telegram ID: ' . $userId . '. Передайте этот номер владельцу для добавления доступа.');
+    send_telegram_message($chatId, 'Пока нет доступа к этому боту. Ваш Telegram ID: ' . $userId . '. Передайте этот номер владельцу для добавления доступа.');
     webhook_reply(200, ['ok' => true, 'ignored' => true]);
 }
 
 $text = trim((string)($message['text'] ?? ''));
 if ($text === '/start' || $text === '/help') {
-    send_telegram_message($config, $chatId,
+    send_telegram_message($chatId,
         "Привет! Я помощник сайта zevnull.ru.\n\nНапиши обычным сообщением, что нужно изменить на сайте. Например:\n«Сделай заголовок главной страницы крупнее и поменяй текст приветствия».\n\nЯ передам задачу ИИ-агенту Рег.облака. Он изучит сайт, подготовит изменение, проверит его и опубликует, если проверки пройдут."
     );
     webhook_reply(200, ['ok' => true]);
 }
 if ($text === '') {
-    send_telegram_message($config, $chatId, 'Пока принимаю только текстовые задачи. Напиши словами, что нужно изменить.');
+    send_telegram_message($chatId, 'Пока принимаю только текстовые задачи. Напиши словами, что нужно изменить.');
     webhook_reply(200, ['ok' => true]);
 }
 if (strlen($text) > 3000) {
-    send_telegram_message($config, $chatId, 'Задача слишком длинная. Разбей её на несколько сообщений (до 3000 символов каждое).');
+    send_telegram_message($chatId, 'Задача слишком длинная. Разбей её на несколько сообщений (до 3000 символов каждое).');
     webhook_reply(200, ['ok' => true]);
 }
 
 if (!dispatch_github_workflow($config, $text, $chatId, $userId)) {
-    send_telegram_message($config, $chatId, 'Не удалось запустить обработку задачи в GitHub. Попробуй ещё раз позже или сообщи владельцу бота.');
+    send_telegram_message($chatId, 'Не удалось запустить обработку задачи в GitHub. Попробуй ещё раз позже или сообщи владельцу бота.');
     webhook_reply(502, ['ok' => false, 'error' => 'GitHub workflow dispatch failed.']);
 }
 
-send_telegram_message($config, $chatId, 'Принял задачу. Запускаю ИИ-агента Рег.облака: он изучит сайт, внесёт изменение и проверит его. Напишу сюда, когда проверка и публикация завершатся.');
+send_telegram_message($chatId, 'Принял задачу. Запускаю ИИ-агента Рег.облака: он изучит сайт, внесёт изменение и проверит его. Напишу сюда, когда проверка и публикация завершатся.');
 webhook_reply(200, ['ok' => true, 'accepted' => true]);
