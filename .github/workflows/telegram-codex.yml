@@ -46,7 +46,7 @@ jobs:
           python-version: "3.12"
 
       - name: Check Python agent syntax
-        run: python -m py_compile agent/telegram_site_agent.py
+        run: python -c "from pathlib import Path; compile(Path('agent/telegram_site_agent.py').read_text(encoding='utf-8'), 'agent/telegram_site_agent.py', 'exec')"
 
       - name: Run REG.RU Cloud website agent
         id: agent
