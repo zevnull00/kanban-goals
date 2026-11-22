@@ -155,6 +155,8 @@ jobs:
       - name: Send result to Telegram
         env:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          GATEWAY_URL: ${{ secrets.TELEGRAM_GATEWAY_URL }}
+          GATEWAY_SECRET: ${{ secrets.TELEGRAM_GATEWAY_SECRET }}
           CHAT_ID: ${{ inputs.telegram_chat_id }}
           EDIT_RESULT: ${{ needs.edit.result }}
           EDIT_CHANGED: ${{ needs.edit.outputs.changed }}
@@ -194,7 +196,23 @@ jobs:
 
           jq -n --arg chat_id "$CHAT_ID" --arg text "$TEXT" \
             '{chat_id: $chat_id, text: $text, disable_web_page_preview: true}' > request.json
-          curl --fail-with-body --silent --show-error \
-            "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
-            -H "Content-Type: application/json" \
-            --data-binary @request.json
+          if [[ -n "${GATEWAY_URL:-}" && -n "${GATEWAY_SECRET:-}" ]]; then
+            echo "Sending Telegram notification through Cloudflare Gateway."
+            if ! curl --fail-with-body --silent --show-error \
+              "${GATEWAY_URL%/}/notify" \
+              -H "Content-Type: application/json" \
+              -H "X-Gateway-Secret: ${GATEWAY_SECRET}" \
+              --data-binary @request.json; then
+              echo "::warning::Cloudflare Gateway notification failed; trying direct Telegram API fallback."
+              curl --fail-with-body --silent --show-error \
+                "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+                -H "Content-Type: application/json" \
+                --data-binary @request.json
+            fi
+          else
+            echo "Cloudflare Gateway not configured; using current direct Telegram route."
+            curl --fail-with-body --silent --show-error \
+              "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+              -H "Content-Type: application/json" \
+              --data-binary @request.json
+          fi
