@@ -827,7 +827,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
 
     // Однократный перенос старого состояния из браузера в серверное хранилище.
     let initialData = {
-      schemaVersion: 3, cards: [], weekly: [], directionTasks: [],
+      schemaVersion: 4, cards: [], weekly: [], directionTasks: [],
       projects: [], deadlines: [], customNotes: []
     };
     try {
@@ -2041,7 +2041,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
       task = {
         id: uid(), title: deadline.title, done: false, completedAt: '',
         boardCardId: card.id, dueDate: deadline.dueDate, priority: deadline.priority,
-        deadlineId: deadline.id, createdAt: nowISO(), updatedAt: nowISO()
+        deadlineId: deadline.id, comment: deadline.comment || '', createdAt: nowISO(), updatedAt: nowISO()
       };
       project.tasks.push(task);
       project.updatedAt = nowISO();
@@ -2202,7 +2202,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
       else {
         for (const project of state.projects) {
           const task = project.tasks.find(candidate => candidate.id === item.projectTaskId);
-          if (task) { task.deadlineId = ''; task.dueDate = ''; task.priority = ''; task.updatedAt = stamp; }
+          if (task) { task.deadlineId = ''; task.dueDate = ''; task.priority = ''; task.comment = fields.comment; task.updatedAt = stamp; }
         }
         item.projectId = ''; item.projectName = ''; item.projectTaskId = '';
       }
@@ -2210,6 +2210,10 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
       item = { id: uid(), ...fields, projectName: '', projectTaskId: '', boardCardId: '', createdAt: stamp, updatedAt: stamp };
       state.deadlines.push(item);
       if (fields.projectId) linkDeadlineToProject(item, fields.projectId);
+    }
+    if (item.boardCardId) {
+      const linkedCard = state.cards.find(card => card.id === item.boardCardId);
+      if (linkedCard) { linkedCard.comment = fields.comment; linkedCard.updatedAt = stamp; }
     }
     saveState();
     closeDeadline();
