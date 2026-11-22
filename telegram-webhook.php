@@ -26,9 +26,29 @@ function webhook_mask_id($value): string
     return str_repeat('*', max(0, strlen($value) - 4)) . $last;
 }
 
+function webhook_redact_value($value)
+{
+    global $webhookSensitiveValues;
+    if (is_string($value)) {
+        foreach (($webhookSensitiveValues ?? []) as $secret) {
+            if (is_string($secret) && $secret !== '') {
+                $value = str_replace($secret, '[REDACTED]', $value);
+            }
+        }
+        return $value;
+    }
+    if (is_array($value)) {
+        foreach ($value as $key => $item) {
+            $value[$key] = webhook_redact_value($item);
+        }
+    }
+    return $value;
+}
+
 function webhook_log(string $stage, array $context = []): void
 {
     global $webhookStartedAt, $webhookRequestId, $webhookLogPath;
+    $context = webhook_redact_value($context);
 
     $record = [
         'time_utc' => gmdate('Y-m-d\TH:i:s\Z'),
@@ -112,14 +132,69 @@ function webhook_reply(int $status, array $payload): void
     exit;
 }
 
-function send_telegram_message($chatId, string $message): void
+function send_telegram_message(array $config, $chatId, string $message): void
 {
-    // Telegram executes this Bot API method from the webhook response itself.
-    // No outbound Telegram API connection is made by the hosting server.
-    webhook_log('telegram.reply.queued', [
-        'method' => 'sendMessage',
+    $token = (string)($config['telegram_bot_token'] ?? '');
+    webhook_log('telegram.sendMessage.begin', [
+        'token_present' => $token !== '',
         'chat_id_masked' => webhook_mask_id($chatId),
         'message_length' => strlen($message),
+        'timeout_seconds' => 3,
+    ]);
+
+    if ($token !== '') {
+        $url = 'https://api.telegram.org/bot' . $token . '/sendMessage';
+        $payload = json_encode([
+            'chat_id' => (string)$chatId,
+            'text' => $message,
+            'disable_web_page_preview' => true,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => "Content-Type: application/json\\r\\n",
+                'content' => $payload,
+                'timeout' => 3,
+                'ignore_errors' => true,
+            ],
+        ]);
+
+        $response = @file_get_contents($url, false, $context);
+        $networkError = error_get_last();
+        $status = 0;
+        foreach (($http_response_header ?? []) as $header) {
+            if (preg_match('/^HTTP\\/\\S+\\s+(\\d{3})/', $header, $matches)) {
+                $status = (int)$matches[1];
+            }
+        }
+
+        $decoded = is_string($response) ? json_decode($response, true) : null;
+        $apiOk = is_array($decoded) && ($decoded['ok'] ?? false) === true;
+        $description = is_array($decoded) && isset($decoded['description'])
+            ? substr((string)$decoded['description'], 0, 500)
+            : null;
+
+        webhook_log('telegram.sendMessage.finished', [
+            'http_status' => $status,
+            'response_received' => $response !== false,
+            'response_bytes' => is_string($response) ? strlen($response) : 0,
+            'api_ok' => $apiOk,
+            'description' => $description,
+            'network_error' => $response === false && is_array($networkError)
+                ? substr((string)$networkError['message'], 0, 500)
+                : null,
+        ]);
+
+        if ($apiOk) {
+            webhook_reply(200, ['ok' => true, 'message_sent' => true]);
+        }
+    }
+
+    // Fallback: ask Telegram to execute sendMessage from this webhook response.
+    webhook_log('telegram.sendMessage.fallback_webhook_reply', [
+        'chat_id_masked' => webhook_mask_id($chatId),
+        'reason' => $token === '' ? 'bot_token_missing' : 'direct_api_send_failed',
     ]);
     webhook_reply(200, [
         'method' => 'sendMessage',
@@ -277,6 +352,12 @@ try {
     ]);
     webhook_reply(500, ['ok' => false, 'error' => 'Private Telegram configuration could not be loaded.']);
 }
+$webhookSensitiveValues = is_array($config) ? [
+    (string)($config['telegram_bot_token'] ?? ''),
+    (string)($config['telegram_webhook_secret'] ?? ''),
+    (string)($config['github_token'] ?? ''),
+] : [];
+
 webhook_log('config.load.success', [
     'is_array' => is_array($config),
     'keys_present' => is_array($config) ? array_values(array_intersect(
@@ -366,23 +447,23 @@ webhook_log('authorization.checked', [
     'user_id_masked' => webhook_mask_id($userId),
 ]);
 if (!$authorized) {
-    send_telegram_message($chatId, 'Пока нет доступа к этому боту. Ваш Telegram ID: ' . $userId . '. Передайте этот номер владельцу для добавления доступа.');
+    send_telegram_message($config, $chatId, 'Пока нет доступа к этому боту. Ваш Telegram ID: ' . $userId . '. Передайте этот номер владельцу для добавления доступа.');
 }
 
 if ($text === '/start' || $text === '/help') {
     webhook_log('message.route', ['route' => $text === '/start' ? 'start' : 'help']);
-    send_telegram_message($chatId,
+    send_telegram_message($config, $chatId,
         "Привет! Я помощник сайта zevnull.ru.\n\nНапиши обычным сообщением, что нужно изменить на сайте. Например:\n«Сделай заголовок главной страницы крупнее и поменяй текст приветствия».\n\nЯ передам задачу ИИ-агенту Рег.облака. Он изучит сайт, подготовит изменение, проверит его и опубликует, если проверки пройдут."
     );
 }
 
 if ($text === '') {
     webhook_log('message.route', ['route' => 'empty_text']);
-    send_telegram_message($chatId, 'Пока принимаю только текстовые задачи. Напиши словами, что нужно изменить.');
+    send_telegram_message($config, $chatId, 'Пока принимаю только текстовые задачи. Напиши словами, что нужно изменить.');
 }
 if (strlen($text) > 3000) {
     webhook_log('message.route', ['route' => 'text_too_long', 'text_length' => strlen($text)]);
-    send_telegram_message($chatId, 'Задача слишком длинная. Разбей её на несколько сообщений (до 3000 символов каждое).');
+    send_telegram_message($config, $chatId, 'Задача слишком длинная. Разбей её на несколько сообщений (до 3000 символов каждое).');
 }
 
 webhook_log('message.route', ['route' => 'github_dispatch']);
@@ -403,7 +484,7 @@ if (!in_array($dispatchStatus, [200, 204], true)) {
     } else {
         $reason = 'Проверь настройки GitHub и приватную конфигурацию.';
     }
-    send_telegram_message($chatId, 'Не удалось запустить workflow GitHub (HTTP ' . $dispatchStatus . '). ' . $reason);
+    send_telegram_message($config, $chatId, 'Не удалось запустить workflow GitHub (HTTP ' . $dispatchStatus . '). ' . $reason);
 }
 
-send_telegram_message($chatId, 'Принял задачу. Запускаю ИИ-агента Рег.облака: он изучит сайт, внесёт изменение и проверит его. Напишу сюда, когда проверки и публикация завершатся.');
+send_telegram_message($config, $chatId, 'Принял задачу. Запускаю ИИ-агента Рег.облака: он изучит сайт, внесёт изменение и проверит его. Напишу сюда, когда проверки и публикация завершатся.');
