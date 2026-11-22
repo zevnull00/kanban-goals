@@ -1626,6 +1626,7 @@ body[data-theme="dark"] .deadline-calendar-day{background:var(--control-bg);colo
     }
 
     let task;
+    const existingBoardCardId = previousTask?.boardCardId || deadline.boardCardId || '';
     if (previousTask && previousProject === target) {
       task = previousTask;
       task.title = deadline.title;
@@ -1640,13 +1641,25 @@ body[data-theme="dark"] .deadline-calendar-day{background:var(--control-bg);colo
       }
       task = {
         id: uid(), title: deadline.title, done: false, completedAt: '',
-        boardCardId: '', dueDate: deadline.dueDate, priority: deadline.priority,
+        boardCardId: existingBoardCardId, dueDate: deadline.dueDate, priority: deadline.priority,
         deadlineId: deadline.id, createdAt: nowISO(), updatedAt: nowISO()
       };
       target.tasks.push(task);
       target.updatedAt = nowISO();
     }
 
+    if (existingBoardCardId) {
+      const card = state.cards.find(item => item.id === existingBoardCardId);
+      if (card) {
+        card.title = deadline.title;
+        card.direction = target.direction;
+        card.projectId = target.id;
+        card.projectName = target.name;
+        card.projectTaskId = task.id;
+        card.updatedAt = nowISO();
+      }
+      deadline.boardCardId = existingBoardCardId;
+    }
     deadline.projectId = target.id;
     deadline.projectName = target.name;
     deadline.projectTaskId = task.id;
@@ -1680,7 +1693,14 @@ body[data-theme="dark"] .deadline-calendar-day{background:var(--control-bg);colo
       task.title = deadline.title;
       task.dueDate = deadline.dueDate;
       task.priority = deadline.priority;
+      task.deadlineId = deadline.id;
       task.updatedAt = nowISO();
+      card.title = deadline.title;
+      card.direction = project?.direction || deadline.direction;
+      card.projectId = project?.id || '';
+      card.projectName = project?.name || '';
+      card.projectTaskId = task.id;
+      card.updatedAt = nowISO();
     } else if (project) {
       task = {
         id: uid(), title: deadline.title, done: false, completedAt: '',
@@ -2138,15 +2158,18 @@ body[data-theme="dark"] .deadline-calendar-day{background:var(--control-bg);colo
       const cardIdMap = new Map();
       const projectIdMap = new Map();
       const taskIdMap = new Map();
+      const deadlineIdMap = new Map();
       pendingImport.cards.forEach(card => cardIdMap.set(card.id, uid()));
       pendingImport.projects.forEach(project => {
         projectIdMap.set(project.id, uid());
         project.tasks.forEach(task => taskIdMap.set(task.id, uid()));
       });
+      pendingImport.deadlines.forEach(item => deadlineIdMap.set(item.id, uid()));
       const projectAdditions = pendingImport.projects.map(project => ({
         ...project, id: projectIdMap.get(project.id),
         tasks: project.tasks.map(task => ({ ...task, id: taskIdMap.get(task.id),
-          boardCardId: task.boardCardId ? (cardIdMap.get(task.boardCardId) || '') : '' }))
+          boardCardId: task.boardCardId ? (cardIdMap.get(task.boardCardId) || '') : '',
+          deadlineId: task.deadlineId ? (deadlineIdMap.get(task.deadlineId) || '') : '' }))
       }));
       const cardAdditions = pendingImport.cards.map(card => ({
         ...card, id: cardIdMap.get(card.id),
@@ -2154,7 +2177,7 @@ body[data-theme="dark"] .deadline-calendar-day{background:var(--control-bg);colo
         projectTaskId: card.projectTaskId ? (taskIdMap.get(card.projectTaskId) || '') : ''
       }));
       const deadlineAdditions = pendingImport.deadlines.map(item => ({
-        ...item, id: uid(),
+        ...item, id: deadlineIdMap.get(item.id),
         projectId: item.projectId ? (projectIdMap.get(item.projectId) || '') : '',
         projectTaskId: item.projectTaskId ? (taskIdMap.get(item.projectTaskId) || '') : '',
         boardCardId: item.boardCardId ? (cardIdMap.get(item.boardCardId) || '') : ''
@@ -2169,7 +2192,7 @@ body[data-theme="dark"] .deadline-calendar-day{background:var(--control-bg);colo
       state.weekly = [...weeks.values()];
       state.directionTasks.push(...pendingImport.directionTasks.map(task => ({ ...task, id: uid(), createdAt: nowISO(), updatedAt: nowISO() })));
     }
-    saveState(); closeImport(); render(); renderWeek(); renderDirections(); renderSignals(); renderReport();
+    saveState(); closeImport(); render(); renderWeek(); renderDirections(); renderSignals(); renderReport(); renderDeadlines();
     showToast(mode === 'replace' ? 'Данные заменены.' : 'Данные добавлены.');
   });
   function updatePrintWeekLabel() {
