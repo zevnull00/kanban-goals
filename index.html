@@ -795,7 +795,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
   </div>
 </dialog>
 <footer class="app-footer" aria-label="Информация о версии">
-  <span>Версия 1.0.0-bot-api</span>
+  <span id="versionInfo">Версия 1.0.0-bot-api · обновлено <span id="buildTimestamp">—</span></span>
 </footer>
 <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
@@ -2560,6 +2560,13 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
     $('#printWeekLabel').textContent = `Отчётная неделя: ${formatDate(week)} — ${end.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' })}`;
   }
 
+  function updateVersionInfo() {
+    const target = document.getElementById('buildTimestamp');
+    if (!target) return;
+    const raw = document.lastModified;
+    target.textContent = raw || 'дата неизвестна';
+  }
+
   $('#customNoteForm').addEventListener('submit', event => {
     event.preventDefault();
     const input = $('#customNoteInput');
@@ -2597,6 +2604,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
   renderSignals();
   refreshDeadlineProjectFilter();
   renderDeadlines();
+  updateVersionInfo();
 })();
 </script>
 </body>
