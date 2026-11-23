@@ -110,6 +110,13 @@ def choose_models(api_key: str) -> list[str]:
         if "claude" in norm and any(marker in norm for marker in ("opus", "fable"))
     ])
 
+    # Other GPT models are a final fallback after coding-specialized GPT and Sonnet.
+    # Exclude OpenAI's OSS-labelled endpoint; the requested shortlist is ChatGPT/GPT API.
+    add([
+        (original, norm) for original, norm in approved
+        if "gpt-" in norm and "oss" not in norm
+    ])
+
     # Do not silently fall back to Haiku/general chat models or any other vendor.
     print("Все ID моделей REG.Cloud: " + ", ".join(model_ids[:80]))
     print("Разрешённые кандидаты GPT/Claude: " + ", ".join(ordered))
