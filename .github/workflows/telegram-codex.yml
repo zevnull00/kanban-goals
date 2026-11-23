@@ -64,21 +64,22 @@ jobs:
           set -euo pipefail
           mapfile -t changed_files < <(git status --short --untracked-files=all | sed -E 's/^...//')
           for file in "${changed_files[@]}"; do
-            [[ "$file" == "index.html" ]] || {
+            [[ "$file" == "index.html" || "$file" == "api.php" ]] || {
               echo "Agent modified a protected or unsupported file: $file"
               exit 1
             }
           done
 
-          if ! git diff --quiet -- index.html; then
+          if ! git diff --quiet -- index.html api.php; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "Agent made no website changes."
+            echo "Agent made no application changes."
             exit 0
           fi
 
           git diff --check
+          php -l api.php
           node <<'NODE'
           const fs = require('fs');
           const vm = require('vm');
@@ -98,7 +99,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: telegram-site-update
-          path: index.html
+          path: |
+            index.html
+            api.php
           if-no-files-found: error
           retention-days: 1
 
@@ -129,11 +132,12 @@ jobs:
         run: |
           set -euo pipefail
           install -m 0644 telegram-artifact/index.html ./index.html
+          install -m 0644 telegram-artifact/api.php ./api.php
           git diff --check
-          git diff --quiet -- index.html && { echo "No changes to commit."; exit 1; }
+          git diff --quiet -- index.html api.php && { echo "No changes to commit."; exit 1; }
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- index.html
+          git add -- index.html api.php
           git commit -m "Update website from Telegram request"
           AUTH="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
           git -c http.extraheader="AUTHORIZATION: basic $AUTH" push origin HEAD:main

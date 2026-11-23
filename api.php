@@ -73,10 +73,10 @@ function normalize_payload($data): array
     if (!is_array($data)) {
         throw new InvalidArgumentException('Данные канбана имеют неверный формат.');
     }
-    $result = [
-        'schemaVersion' => isset($data['schemaVersion']) && is_numeric($data['schemaVersion']) ? (int)$data['schemaVersion'] : 4,
-        'updatedAt' => isset($data['updatedAt']) && is_string($data['updatedAt']) ? $data['updatedAt'] : gmdate('c'),
-    ];
+    // Начинаем с исходного объекта: неизвестные будущие поля нельзя молча выбрасывать.
+    $result = $data;
+    $result['schemaVersion'] = isset($data['schemaVersion']) && is_numeric($data['schemaVersion']) ? (int)$data['schemaVersion'] : 4;
+    $result['updatedAt'] = isset($data['updatedAt']) && is_string($data['updatedAt']) ? $data['updatedAt'] : gmdate('c');
     foreach (['cards', 'weekly', 'directionTasks', 'projects', 'deadlines', 'customNotes'] as $key) {
         $value = $data[$key] ?? [];
         if (!is_array($value)) {
@@ -139,6 +139,89 @@ function with_storage_lock(callable $callback)
     }
 }
 
+/**
+ * Сохраняет поля, которых нет во входящем объекте, из предыдущей версии.
+ * Для списков объединяет поля только у записей с совпадающим id/week.
+ * Удалённые пользователем записи обратно не добавляются.
+ */
+function is_list_array_compat(array $value): bool
+{
+    if ($value === []) {
+        return true;
+    }
+    return array_keys($value) === range(0, count($value) - 1);
+}
+
+function preserve_omitted_fields($incoming, $previous)
+{
+    if (!is_array($incoming) || !is_array($previous)) {
+        return $incoming;
+    }
+
+    if (is_list_array_compat($incoming) && is_list_array_compat($previous)) {
+        $previousByIdentity = [];
+        foreach ($previous as $item) {
+            if (is_array($item)) {
+                $identity = $item['id'] ?? $item['week'] ?? null;
+                if (is_string($identity) || is_int($identity)) {
+                    $previousByIdentity[(string)$identity] = $item;
+                }
+            }
+        }
+        foreach ($incoming as $index => $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $identity = $item['id'] ?? $item['week'] ?? null;
+            if ((is_string($identity) || is_int($identity)) && isset($previousByIdentity[(string)$identity])) {
+                $incoming[$index] = preserve_omitted_fields($item, $previousByIdentity[(string)$identity]);
+            }
+        }
+        return $incoming;
+    }
+
+    foreach ($previous as $key => $oldValue) {
+        if (!array_key_exists($key, $incoming)) {
+            $incoming[$key] = $oldValue;
+        } else {
+            $incoming[$key] = preserve_omitted_fields($incoming[$key], $oldValue);
+        }
+    }
+    return $incoming;
+}
+
+function backup_before_schema_upgrade(string $directory, array $current, array $incoming): void
+{
+    $currentVersion = (int)($current['schemaVersion'] ?? 1);
+    $incomingVersion = (int)($incoming['schemaVersion'] ?? $currentVersion);
+    if ($incomingVersion <= $currentVersion) {
+        return;
+    }
+
+    $source = $directory . '/kanban.json';
+    if (!is_file($source)) {
+        return;
+    }
+
+    $backupDirectory = $directory . '/backups';
+    if (!is_dir($backupDirectory) && !@mkdir($backupDirectory, 0700, true) && !is_dir($backupDirectory)) {
+        throw new RuntimeException('Не удалось создать каталог резервных копий перед обновлением схемы данных.');
+    }
+    @chmod($backupDirectory, 0700);
+    $backupName = sprintf(
+        'kanban-v%d-to-v%d-%s-%s.json',
+        $currentVersion,
+        $incomingVersion,
+        gmdate('Ymd-His'),
+        bin2hex(random_bytes(3))
+    );
+    $backupPath = $backupDirectory . '/' . $backupName;
+    if (!@copy($source, $backupPath)) {
+        throw new RuntimeException('Не удалось создать резервную копию перед обновлением схемы. Исходные данные не изменены.');
+    }
+    @chmod($backupPath, 0600);
+}
+
 $action = (string)($input['action'] ?? '');
 
 if ($action === 'session') {
@@ -197,7 +280,23 @@ try {
 
     if ($action === 'save') {
         $data = normalize_payload($input['data'] ?? null);
-        with_storage_lock(function (string $directory) use ($data): void {
+        with_storage_lock(function (string $directory) use (&$data): void {
+            $current = read_data_locked($directory);
+            if ($current !== null) {
+                $currentVersion = (int)($current['schemaVersion'] ?? 1);
+                $incomingVersion = (int)($data['schemaVersion'] ?? $currentVersion);
+                if ($incomingVersion < $currentVersion) {
+                    throw new RuntimeException(
+                        'Сохранение остановлено: версия данных в браузере старее серверной. Обнови страницу; серверные данные не изменены.'
+                    );
+                }
+
+                // Перед миграцией сохраняем точную копию исходного JSON вне публичного каталога.
+                backup_before_schema_upgrade($directory, $current, $data);
+
+                // Старые клиенты не должны случайно стереть новые поля или новые разделы.
+                $data = preserve_omitted_fields($data, $current);
+            }
             write_data_locked($directory, $data);
         });
         api_response(200, ['ok' => true, 'savedAt' => gmdate('c')]);

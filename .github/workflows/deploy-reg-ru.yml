@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "index.html"
+      - "api.php"
       - "telegram-webhook.php"
       - ".github/workflows/deploy-reg-ru.yml"
   workflow_dispatch:

@@ -831,7 +831,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
   async function loadServerData() {
     const loaded = await api('load');
     if (loaded.initialized) {
-      try { localStorage.removeItem('kanbanGoals.v1'); } catch (error) {}
+      // Старую локальную копию не удаляем автоматически: она остаётся дополнительной страховкой.
       return { data: loaded.data };
     }
 
@@ -851,7 +851,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
     }
 
     const initialized = await api('initialize', { data: initialData });
-    try { localStorage.removeItem('kanbanGoals.v1'); } catch (error) {}
+    // Не удаляем исходную локальную копию после переноса: пользователь сможет восстановить её вручную.
     return { data: initialized.data };
   }
 
@@ -1053,13 +1053,14 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
     const updatedAt = card.updatedAt || createdAt;
     const validHistory = Array.isArray(card.statusHistory)
       ? card.statusHistory.filter(item => item && COLUMNS.some(col => col.id === item.column) && typeof item.at === 'string')
-          .map(item => ({ column: item.column, at: item.at })).sort((a,b) => a.at.localeCompare(b.at))
+          .map(item => ({ ...item, column: item.column, at: item.at })).sort((a,b) => a.at.localeCompare(b.at))
       : [];
     const statusHistory = validHistory.length ? validHistory : [{
       column: card.column,
       at: card.column === 'done' ? updatedAt : createdAt
     }];
     return {
+      ...card,
       id: String(card.id || uid()), title: card.title.trim(), direction: card.direction,
       why: card.why || '', minVersion: card.minVersion || '', metric: card.metric || '',
       firstStep: card.firstStep || '', column: card.column,
@@ -1080,7 +1081,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
       (entry.note === undefined || typeof entry.note === 'string');
   }
   function normalizeWeekly(entry) {
-    return { week: entry.week, signal: entry.signal || '', note: entry.note || '', updatedAt: entry.updatedAt || nowISO() };
+    return { ...entry, week: entry.week, signal: entry.signal || '', note: entry.note || '', updatedAt: entry.updatedAt || nowISO() };
   }
   function validDirectionTask(task) {
     return task && typeof task === 'object' &&
@@ -1093,6 +1094,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
   function normalizeDirectionTask(task) {
     const stamp = nowISO();
     return {
+      ...task,
       id: String(task.id || uid()),
       direction: task.direction,
       title: task.title.trim(),
@@ -1116,6 +1118,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
   function normalizeProjectTask(task) {
     const stamp = nowISO();
     return {
+      ...task,
       id: String(task.id || uid()), title: task.title.trim(),
       done: Boolean(task.done), completedAt: task.completedAt || '',
       boardCardId: task.boardCardId || '',
@@ -1139,6 +1142,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
   function normalizeDeadline(item) {
     const stamp = nowISO();
     return {
+      ...item,
       id: String(item.id || uid()), title: item.title.trim(), dueDate: item.dueDate,
       direction: item.direction, priority: item.priority || '',
       projectId: item.projectId || '', projectName: item.projectName || '',
@@ -1152,7 +1156,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
       typeof note.text === 'string' && note.text.trim().length > 0;
   }
   function normalizeCustomNote(note) {
-    return { id: String(note.id || uid()), text: note.text.trim(), createdAt: note.createdAt || nowISO() };
+    return { ...note, id: String(note.id || uid()), text: note.text.trim(), createdAt: note.createdAt || nowISO() };
   }
 
   function validProject(project) {
@@ -1165,6 +1169,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
   function normalizeProject(project) {
     const stamp = nowISO();
     return {
+      ...project,
       id: String(project.id || uid()), name: project.name.trim(), direction: project.direction,
       description: project.description || '',
       tasks: Array.isArray(project.tasks) ? project.tasks.map(normalizeProjectTask) : [],
@@ -1187,6 +1192,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
     if (Array.isArray(data.deadlines) && !data.deadlines.every(validDeadline)) throw new Error('Один или несколько дедлайнов имеют неверную структуру.');
     if (Array.isArray(data.customNotes) && !data.customNotes.every(validCustomNote)) throw new Error('Одна или несколько пользовательских заметок имеют неверную структуру.');
     return {
+      ...data,
       cards: data.cards.map(normalizeCard),
       weekly: data.weekly.map(normalizeWeekly),
       directionTasks: Array.isArray(data.directionTasks) ? data.directionTasks.map(normalizeDirectionTask) : [],
@@ -1202,6 +1208,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
       return emptyState();
     }
     return {
+      ...data,
       cards: data.cards.filter(validCard).map(normalizeCard),
       weekly: data.weekly.filter(validWeekly).map(normalizeWeekly),
       directionTasks: Array.isArray(data.directionTasks)
@@ -1218,6 +1225,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
   // Снимки сохраняются последовательно, чтобы быстрые изменения не перезаписывали друг друга в обратном порядке.
   function saveState() {
     const payload = JSON.parse(JSON.stringify({
+      ...state,
       schemaVersion: SCHEMA_VERSION,
       updatedAt: nowISO(),
       cards: state.cards,

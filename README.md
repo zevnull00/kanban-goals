@@ -39,9 +39,13 @@
 
 ## Telegram-бот для изменений сайта
 
-Поток: Telegram webhook → GitHub Actions workflow `telegram-codex.yml` → собственный агент на API Рег.облака → проверка → commit в `main` → reusable workflow `deploy-reg-ru.yml` → уведомление в Telegram.
+Поток: Telegram webhook → Cloudflare Worker → GitHub Actions workflow `telegram-codex.yml` → Python-агент на API Рег.облака → проверка → commit в `main` → reusable workflow `deploy-reg-ru.yml` → REG.RU → уведомление через Cloudflare Worker в Telegram.
 
-В репозитории находятся `telegram-webhook.php`, `AGENTS.md`, `agent/telegram_site_agent.py` и `.github/workflows/telegram-codex.yml`. Агент обращается к OpenAI-совместимому API Рег.облака (`https://ai.reg.cloud/v1`), получает доступные модели через `/models` и отправляет задачу в `/chat/completions`. Он может изменять только `index.html`; серверный PHP API, webhook, приватные конфигурации и workflow защищены от изменений со стороны агента. Для применения изменений агент возвращает точечные операции поиска и замены; GitHub Actions проверяет получившийся файл, JavaScript и список изменённых файлов.
+В репозитории находятся `telegram-webhook.php`, `AGENTS.md`, `agent/telegram_site_agent.py` и `.github/workflows/telegram-codex.yml`. Агент обращается к OpenAI-совместимому API Рег.облака (`https://ai.reg.cloud/v1`), получает доступные модели через `/models` и отправляет задачу в `/chat/completions`.
+
+Агент может полноценно менять прикладную часть приложения: `index.html` (интерфейс, разделы, стили и клиентскую логику) и `api.php` (прикладной API и серверное хранение). Поэтому разрешены не только косметические, но и функциональные изменения, новые разделы и расширение схемы пользовательских данных. Защищённые конфиги, секреты, аутентификация, Telegram-интеграция, Cloudflare и GitHub Actions остаются вне области изменений агента.
+
+Изменения передаются точечными патчами с указанием файла. GitHub Actions проверяет список файлов, синтаксис JavaScript и PHP, затем коммитит оба прикладных файла и запускает публикацию на REG.RU. При изменении схемы данных агент обязан выполнять аддитивную миграцию. PHP API сохраняет неизвестные поля и разделы, не допускает отката версии схемы и создаёт резервную копию JSON перед повышением версии схемы. Существующие локальные данные браузера автоматически не удаляются.
 
 ### GitHub Actions secrets
 
