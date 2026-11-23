@@ -17,9 +17,9 @@ from typing import Any
 
 API_BASE = "https://ai.reg.cloud/v1"
 MODEL_PREFERENCES = (
-    # Economical coding model; keep only coding-focused fallbacks.
-    "gpt-5.1-codex-mini",
+    # Prefer the full Codex endpoint; the mini endpoint may be temporarily unavailable.
     "gpt-5.3-codex",
+    "gpt-5.1-codex-mini",
 )
 APP_FILES = ("index.html", "api.php")
 MAX_FILE_BYTES = {"index.html": 2_000_000, "api.php": 1_000_000}
@@ -58,7 +58,12 @@ def api_request(path: str, api_key: str, payload: dict[str, Any] | None = None) 
     return result
 
 
-def choose_model(api_key: str) -> str:
+def choose_models(api_key: str) -> list[str]:
+    """Return available coding models in preference order, not just one model.
+
+    A model can be listed by /models while its completion backend is unhealthy.
+    Keeping alternatives lets the agent recover from a model-specific HTTP 5xx.
+    """
     result = api_request("/models", api_key)
     entries = result.get("data")
     if not isinstance(entries, list):
@@ -68,21 +73,22 @@ def choose_model(api_key: str) -> str:
         raise AgentError("API-ключ не вернул ни одной доступной модели.")
 
     normalized = [(model_id, model_id.lower().replace("_", "-")) for model_id in model_ids]
+    ordered: list[str] = []
     for wanted in MODEL_PREFERENCES:
-        exact = next((original for original, norm in normalized if norm == wanted), None)
-        if exact:
-            return exact
-        partial = next((original for original, norm in normalized if wanted in norm), None)
-        if partial:
-            return partial
+        for original, norm in normalized:
+            if norm == wanted or wanted in norm:
+                if original not in ordered:
+                    ordered.append(original)
 
     for marker in ("codex", "sonnet", "deepseek-v4-pro", "qwen"):
-        match = next((original for original, norm in normalized if marker in norm), None)
-        if match:
-            return match
+        for original, norm in normalized:
+            if marker in norm and original not in ordered:
+                ordered.append(original)
 
-    available = ", ".join(model_ids[:12])
-    raise AgentError("Не найден подходящий программирующий модельный endpoint. Доступны: " + available)
+    if not ordered:
+        available = ", ".join(model_ids[:12])
+        raise AgentError("Не найден подходящий программирующий модельный endpoint. Доступны: " + available)
+    return ordered
 
 
 def extract_json(text: str) -> dict[str, Any]:
@@ -147,8 +153,8 @@ def run() -> int:
             raise AgentError(f"{filename} неожиданно велик; обработка остановлена.")
         original_files[filename] = content
 
-    model = choose_model(api_key)
-    print("Выбрана модель Рег.облака: " + model)
+    models = choose_models(api_key)
+    print("Доступные модели-кандидаты Рег.облака: " + ", ".join(models))
     system_prompt = """Ты — senior full-stack разработчик существующего приложения zevnull.ru.
 Строго следуй AGENTS.md. У тебя есть разрешение выполнять полноценные функциональные изменения, добавлять разделы и расширять модель данных. Разрешённые файлы: index.html и api.php. Не ограничивайся косметикой.
 Особенно внимательно сохраняй пользовательские данные: используй аддитивные и идемпотентные миграции, сохраняй старые поля, записи, ID, связи и историю; не очищай хранилище и не заменяй его пустой структурой. При изменении схемы обновляй SCHEMA_VERSION и обеспечивай совместимость со старыми данными.
@@ -179,15 +185,38 @@ def run() -> int:
         "Выполни запрос. Если меняется схема данных, обязательно реализуй миграцию без потери старых данных. Верни только JSON."
     )
 
-    response = api_request("/chat/completions", api_key, {
-        "model": model,
+    payload_base = {
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
         "temperature": 0.1,
         "max_tokens": 12000,
-    })
+    }
+    response = None
+    model = ""
+    failures: list[str] = []
+    for candidate in models:
+        try:
+            payload = dict(payload_base)
+            payload["model"] = candidate
+            response = api_request("/chat/completions", api_key, payload)
+            model = candidate
+            print("Успешный endpoint Рег.облака: " + model)
+            break
+        except AgentError as exc:
+            error = str(exc)
+            failures.append(candidate + ": " + error)
+            # Retry another model only for provider/server failures.
+            # Authentication, request-format and quota errors need operator action.
+            if not any(marker in error for marker in ("HTTP 500", "HTTP 502", "HTTP 503", "HTTP 504")):
+                raise
+            print("Модель " + candidate + " вернула серверную ошибку; пробую следующую.")
+    if response is None:
+        raise AgentError(
+            "Все доступные coding-модели REG.Cloud завершились серверной ошибкой. "
+            + " | ".join(failures[:5])
+        )
     usage = response.get("usage")
     usage_summary = ""
     if isinstance(usage, dict):
