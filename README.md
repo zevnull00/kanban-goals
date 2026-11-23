@@ -49,14 +49,16 @@
 
 ### GitHub Actions secrets
 
-В Settings → Secrets and variables → Actions добавьте:
+В Settings → Secrets and variables → Actions должны быть настроены:
 
 - `REGCLOUD_API_KEY` — API-ключ сервиса «ИИ-модели» Рег.облака;
-- `TELEGRAM_BOT_TOKEN` — токен бота от BotFather.
+- `TELEGRAM_GATEWAY_URL=https://zevnull-telegram-gateway.volt7459.workers.dev`;
+- `TELEGRAM_GATEWAY_SECRET` — то же значение, что `GATEWAY_SHARED_SECRET` в Cloudflare;
+- `TELEGRAM_BOT_TOKEN` — резервный маршрут прямой отправки уведомлений.
 
 Существующие `REG_SFTP_HOST`, `REG_SFTP_PORT`, `REG_SFTP_USER` и `REG_SFTP_PASSWORD` используются повторно для публикации.
 
-### Приватный файл на REG.RU
+### Секреты Cloudflare и GitHub
 
 Для Cloudflare Worker `zevnull-telegram-gateway` в Settings → Variables and Secrets должны быть настроены secrets:
 
