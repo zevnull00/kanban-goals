@@ -58,28 +58,20 @@
 
 ### Приватный файл на REG.RU
 
-Создайте `kanban-private/telegram-config.php` на хостинге. Это файл вне Git; не загружайте его в репозиторий:
+Для Cloudflare Worker `zevnull-telegram-gateway` в Settings → Variables and Secrets должны быть настроены secrets:
 
-```php
-<?php
-return [
-    'telegram_bot_token' => 'ТОКЕН_БОТА',
-    'telegram_webhook_secret' => 'СЛУЧАЙНАЯ_СТРОКА_ДЛЯ_WEBHOOK',
-    'telegram_allowed_user_ids' => ['TELEGRAM_ID_1', 'TELEGRAM_ID_2'],
-    'github_token' => 'FINE_GRAINED_GITHUB_TOKEN',
-    'github_owner' => 'zevnull00',
-    'github_repo' => 'kanban-goals',
-    'github_workflow' => 'telegram-codex.yml',
-    'github_ref' => 'main',
-];
-```
+- `TELEGRAM_BOT_TOKEN` — токен бота;
+- `TELEGRAM_WEBHOOK_SECRET` — случайная строка для проверки Telegram webhook;
+- `GITHUB_TOKEN` — Fine-grained token только для репозитория `zevnull00/kanban-goals` с Repository permissions → Actions: Read and write;
+- `GATEWAY_SHARED_SECRET` — общий секрет для вызова endpoint `/notify` из GitHub Actions.
 
-Для Fine-grained personal access token выберите только репозиторий `zevnull00/kanban-goals` и разрешение Repository permissions → Actions: Read and write. Оно нужно только для запуска workflow_dispatch.
+Variables Worker: `GITHUB_OWNER=zevnull00`, `GITHUB_REPO=kanban-goals`, `GITHUB_WORKFLOW=telegram-codex.yml`, `GITHUB_REF=main`, `TELEGRAM_ALLOWED_USER_IDS=848638447,663743323` и `ACCEPT_MESSAGES_AFTER`.
 
-После загрузки `telegram-webhook.php` установите webhook Telegram методом `setWebhook`, передав URL `https://zevnull.ru/telegram-webhook.php`, тот же `secret_token` и `allowed_updates: ["message"]`.
+В GitHub → Settings → Secrets and variables → Actions должны быть заданы `REGCLOUD_API_KEY`, `TELEGRAM_GATEWAY_URL=https://zevnull-telegram-gateway.volt7459.workers.dev` и `TELEGRAM_GATEWAY_SECRET` (то же значение, что `GATEWAY_SHARED_SECRET`). `TELEGRAM_BOT_TOKEN` в GitHub оставлен как резервный маршрут отправки уведомлений.
 
-**Не помещайте токены в GitHub-файлы, сообщения Telegram или код сайта.** Владелец и девушка должны отправить `/start` боту; если ID пока не разрешён, бот вернёт собственный Telegram ID для внесения в приватный конфиг. Секрет `REGCLOUD_API_KEY` хранится только в GitHub Actions Secrets и не размещается на хостинге.
+Для первичной регистрации webhook используй файл `cloudflare/telegram-gateway/scripts/set-webhook.ps1` из PowerShell. Он запросит токен и webhook secret скрытым вводом, установит адрес `https://zevnull-telegram-gateway.volt7459.workers.dev/telegram` и покажет результат `getWebhookInfo`. Не регистрируй старый PHP endpoint вместо Worker, пока используется Cloudflare Gateway.
 
+**Не помещай токены и секреты в GitHub-файлы, сообщения Telegram или код сайта.** Секреты хранятся только в Cloudflare Worker Secrets и GitHub Actions Secrets. Старый `telegram-webhook.php` оставлен в репозитории как резервный вариант и не удаляется.
 ## Разработка
 
 Для локального запуска с серверным хранением нужен PHP и файл `kanban-private/config.php`. Простое открытие `index.html` как файла больше не поддерживает сохранение данных.

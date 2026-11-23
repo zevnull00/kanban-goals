@@ -169,13 +169,13 @@ def run() -> int:
 """
 
     user_prompt = (
-        "Указания проекта (AGENTS.md):\\n"
-        "<project_rules>\\n" + instructions + "\\n</project_rules>\\n\\n"
-        "Текущие файлы приложения. Сохраняй их существующую функциональность и данные:\\n"
-        "<current_file path=\"index.html\">\\n" + original_files["index.html"] + "\\n</current_file>\\n"
-        "<current_file path=\"api.php\">\\n" + original_files["api.php"] + "\\n</current_file>\\n\\n"
-        "Запрос от разрешённого Telegram ID " + telegram_user_id + ":\\n"
-        "<telegram_request>\\n" + task + "\\n</telegram_request>\\n\\n"
+        "Указания проекта (AGENTS.md):\n"
+        "<project_rules>\n" + instructions + "\n</project_rules>\n\n"
+        "Текущие файлы приложения. Сохраняй их существующую функциональность и данные:\n"
+        "<current_file path=\"index.html\">\n" + original_files["index.html"] + "\n</current_file>\n"
+        "<current_file path=\"api.php\">\n" + original_files["api.php"] + "\n</current_file>\n\n"
+        "Запрос от разрешённого Telegram ID " + telegram_user_id + ":\n"
+        "<telegram_request>\n" + task + "\n</telegram_request>\n\n"
         "Выполни запрос. Если меняется схема данных, обязательно реализуй миграцию без потери старых данных. Верни только JSON."
     )
 

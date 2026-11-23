@@ -1179,7 +1179,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
 
   function validateImport(data) {
     if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('Корневой элемент должен быть JSON-объектом.');
-    if (![1, 2, 3, 4].includes(data.schemaVersion)) throw new Error('Неподдерживаемая версия схемы. Поддерживаются версии 1, 2, 3 и 4.');
+    if (!Number.isInteger(data.schemaVersion) || data.schemaVersion < 1 || data.schemaVersion > SCHEMA_VERSION) throw new Error('Неподдерживаемая версия схемы. Поддерживаются версии от 1 до ' + SCHEMA_VERSION + '.');
     if (!Array.isArray(data.cards) || !Array.isArray(data.weekly)) throw new Error('В файле должны быть массивы cards и weekly.');
     if (data.directionTasks !== undefined && !Array.isArray(data.directionTasks)) throw new Error('Поле directionTasks должно быть массивом.');
     if (data.projects !== undefined && !Array.isArray(data.projects)) throw new Error('Поле projects должно быть массивом.');
