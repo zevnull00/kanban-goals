@@ -67,7 +67,7 @@ def api_request(path: str, api_key: str, payload: dict[str, Any] | None = None) 
 
 
 def choose_models(api_key: str) -> list[str]:
-    """Return only approved OpenAI/ChatGPT and Claude coding models."""
+    """Return inexpensive capable GPT/Claude models first, then stronger fallbacks."""
     result = api_request("/models", api_key)
     entries = result.get("data")
     if not isinstance(entries, list):
@@ -80,29 +80,43 @@ def choose_models(api_key: str) -> list[str]:
         raise AgentError("API-ключ не вернул ни одной доступной модели.")
 
     normalized = [(model_id, model_id.lower().replace("_", "-")) for model_id in model_ids]
+    # REG.Cloud may prefix vendor/model IDs (for example, anthropic/claude-...).
+    # Match the vendor name anywhere in the ID instead of requiring it at position 0.
     approved = [
         (original, norm) for original, norm in normalized
-        if norm.startswith(("gpt-", "chatgpt-", "claude-"))
+        if "claude" in norm or "gpt-" in norm or "chatgpt" in norm
     ]
     ordered: list[str] = []
-    for wanted in MODEL_PREFERENCES:
-        for original, norm in approved:
-            if norm == wanted or wanted in norm:
-                if original not in ordered:
-                    ordered.append(original)
 
-    # Accept newer versions from the approved vendors, but only coding-capable
-    # model families. Exclude cheap general-purpose/weak variants and all other vendors.
-    for marker in ("codex", "claude-sonnet"):
-        for original, norm in approved:
-            if marker in norm and original not in ordered:
+    def add(items: list[tuple[str, str]]) -> None:
+        for original, _norm in items:
+            if original not in ordered:
                 ordered.append(original)
 
+    # Low-cost coding model first.
+    add([(original, norm) for original, norm in approved if "gpt-5.1-codex-mini" in norm])
+
+    # Sonnet is the cost/quality sweet spot for substantial code changes.
+    # Keep all available Sonnet variants as fallback candidates.
+    add([(original, norm) for original, norm in approved if "claude" in norm and "sonnet" in norm])
+
+    # Then use stronger OpenAI coding endpoints.
+    add([(original, norm) for original, norm in approved if "gpt-5.3-codex" in norm])
+    add([(original, norm) for original, norm in approved if "codex" in norm])
+
+    # More expensive Claude reasoning models are last-resort fallbacks.
+    add([
+        (original, norm) for original, norm in approved
+        if "claude" in norm and any(marker in norm for marker in ("opus", "fable"))
+    ])
+
+    # Do not silently fall back to Haiku/general chat models or any other vendor.
+    print("Все ID моделей REG.Cloud: " + ", ".join(model_ids[:80]))
+    print("Разрешённые кандидаты GPT/Claude: " + ", ".join(ordered))
     if not ordered:
-        available = ", ".join(model_ids[:20])
         raise AgentError(
-            "Не найдены подходящие модели OpenAI/ChatGPT или Claude. "
-            "Другие провайдеры отключены. Доступны: " + available
+            "Не найдены доступные модели GPT/Codex или Claude Sonnet/Opus. "
+            "Список /models: " + ", ".join(model_ids[:30])
         )
     return ordered
 
@@ -252,7 +266,10 @@ def run() -> int:
             failures.append(candidate + ": " + error)
             # Retry another model only for provider/server failures.
             # Authentication, request-format and quota errors need operator action.
-            if not any(marker in error for marker in ("HTTP 500", "HTTP 502", "HTTP 503", "HTTP 504")):
+            if not any(marker in error for marker in (
+                "HTTP 400", "HTTP 404", "HTTP 408", "HTTP 409",
+                "HTTP 429", "HTTP 500", "HTTP 502", "HTTP 503", "HTTP 504",
+            )):
                 raise
             print("Модель " + candidate + " вернула серверную ошибку; пробую следующую.")
     if response is None:
