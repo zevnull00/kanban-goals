@@ -55,7 +55,26 @@ jobs:
           REGCLOUD_API_KEY: ${{ secrets.REGCLOUD_API_KEY }}
           TASK: ${{ inputs.task }}
           TELEGRAM_USER_ID: ${{ inputs.telegram_user_id }}
+          TELEGRAM_CHAT_ID: ${{ inputs.telegram_chat_id }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: python agent/telegram_site_agent.py
+
+      - name: Report validation stage
+        if: always()
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: ${{ inputs.telegram_chat_id }}
+          AGENT_RESULT: ${{ steps.agent.outcome }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$AGENT_RESULT" == "success" ]]; then
+            TEXT="🔍 Агент завершил подготовку изменений. Проверяю JavaScript, PHP и целостность патча."
+          else
+            TEXT="⚠️ Агент не смог подготовить изменения. Собираю отчёт об ошибке."
+          fi
+          jq -n --arg chat_id "$CHAT_ID" --arg text "$TEXT" '{chat_id:$chat_id,text:$text}' |
+            curl --fail-with-body --silent --show-error "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" -H "Content-Type: application/json" --data-binary @-
 
       - name: Validate changed files and JavaScript syntax
         id: changes
@@ -141,6 +160,9 @@ jobs:
           git commit -m "Update website from Telegram request"
           AUTH="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
           git -c http.extraheader="AUTHORIZATION: basic $AUTH" push origin HEAD:main
+          TEXT="📦 Изменения сохранены в GitHub. Начинаю публикацию сайта на REG.RU."
+          jq -n --arg chat_id "${{ inputs.telegram_chat_id }}" --arg text "$TEXT" '{chat_id:$chat_id,text:$text}' |
+            curl --fail-with-body --silent --show-error "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" -H "Content-Type: application/json" --data-binary @-
 
   deploy:
     needs: [edit, commit]
