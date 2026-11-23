@@ -16,10 +16,18 @@ from pathlib import Path
 from typing import Any
 
 API_BASE = "https://ai.reg.cloud/v1"
+# Only OpenAI/ChatGPT and Anthropic Claude models are allowed. Start with
+# cost-efficient coding models, then fall back to stronger models from the
+# same two providers. Never silently route user code to another vendor.
 MODEL_PREFERENCES = (
-    # Prefer the full Codex endpoint; the mini endpoint may be temporarily unavailable.
-    "gpt-5.3-codex",
     "gpt-5.1-codex-mini",
+    "gpt-5-codex-mini",
+    "claude-sonnet-4-5",
+    "claude-3-7-sonnet",
+    "claude-3-5-sonnet",
+    "gpt-5.3-codex",
+    "gpt-5.2-codex",
+    "gpt-5.1-codex",
 )
 APP_FILES = ("index.html", "api.php")
 MAX_FILE_BYTES = {"index.html": 2_000_000, "api.php": 1_000_000}
@@ -59,36 +67,68 @@ def api_request(path: str, api_key: str, payload: dict[str, Any] | None = None) 
 
 
 def choose_models(api_key: str) -> list[str]:
-    """Return available coding models in preference order, not just one model.
-
-    A model can be listed by /models while its completion backend is unhealthy.
-    Keeping alternatives lets the agent recover from a model-specific HTTP 5xx.
-    """
+    """Return only approved OpenAI/ChatGPT and Claude coding models."""
     result = api_request("/models", api_key)
     entries = result.get("data")
     if not isinstance(entries, list):
         raise AgentError("В ответе /models отсутствует список доступных моделей.")
-    model_ids = [entry.get("id") for entry in entries if isinstance(entry, dict) and isinstance(entry.get("id"), str)]
+    model_ids = [
+        entry.get("id") for entry in entries
+        if isinstance(entry, dict) and isinstance(entry.get("id"), str)
+    ]
     if not model_ids:
         raise AgentError("API-ключ не вернул ни одной доступной модели.")
 
     normalized = [(model_id, model_id.lower().replace("_", "-")) for model_id in model_ids]
+    approved = [
+        (original, norm) for original, norm in normalized
+        if norm.startswith(("gpt-", "chatgpt-", "claude-"))
+    ]
     ordered: list[str] = []
     for wanted in MODEL_PREFERENCES:
-        for original, norm in normalized:
+        for original, norm in approved:
             if norm == wanted or wanted in norm:
                 if original not in ordered:
                     ordered.append(original)
 
-    for marker in ("codex", "sonnet", "deepseek-v4-pro", "qwen"):
-        for original, norm in normalized:
+    # Accept newer versions from the approved vendors, but only coding-capable
+    # model families. Exclude cheap general-purpose/weak variants and all other vendors.
+    for marker in ("codex", "claude-sonnet"):
+        for original, norm in approved:
             if marker in norm and original not in ordered:
                 ordered.append(original)
 
     if not ordered:
-        available = ", ".join(model_ids[:12])
-        raise AgentError("Не найден подходящий программирующий модельный endpoint. Доступны: " + available)
+        available = ", ".join(model_ids[:20])
+        raise AgentError(
+            "Не найдены подходящие модели OpenAI/ChatGPT или Claude. "
+            "Другие провайдеры отключены. Доступны: " + available
+        )
     return ordered
+
+
+def send_progress(message: str) -> None:
+    """Best-effort Telegram progress update; task execution must survive notification errors."""
+    token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+    if not token or not chat_id:
+        return
+    payload = json.dumps({
+        "chat_id": chat_id,
+        "text": message,
+        "disable_web_page_preview": True,
+    }, ensure_ascii=False).encode("utf-8")
+    request = urllib.request.Request(
+        "https://api.telegram.org/bot" + token + "/sendMessage",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=12) as response:
+            response.read(1024)
+    except Exception as exc:
+        print("Не удалось отправить обновление прогресса в Telegram: " + type(exc).__name__)
 
 
 def extract_json(text: str) -> dict[str, Any]:
@@ -153,8 +193,10 @@ def run() -> int:
             raise AgentError(f"{filename} неожиданно велик; обработка остановлена.")
         original_files[filename] = content
 
+    send_progress("🔎 Изучаю доступные модели ChatGPT и Claude…")
     models = choose_models(api_key)
     print("Доступные модели-кандидаты Рег.облака: " + ", ".join(models))
+    send_progress("🧠 Модели проверены. Начинаю анализ проекта и подготовку изменений.")
     system_prompt = """Ты — senior full-stack разработчик существующего приложения zevnull.ru.
 Строго следуй AGENTS.md. У тебя есть разрешение выполнять полноценные функциональные изменения, добавлять разделы и расширять модель данных. Разрешённые файлы: index.html и api.php. Не ограничивайся косметикой.
 Особенно внимательно сохраняй пользовательские данные: используй аддитивные и идемпотентные миграции, сохраняй старые поля, записи, ID, связи и историю; не очищай хранилище и не заменяй его пустой структурой. При изменении схемы обновляй SCHEMA_VERSION и обеспечивай совместимость со старыми данными.
@@ -191,7 +233,8 @@ def run() -> int:
             {"role": "user", "content": user_prompt},
         ],
         "temperature": 0.1,
-        "max_tokens": 12000,
+        # Deliberately omit max_tokens: the old fixed 12k cap truncated valid
+        # patch plans before the model could finish its JSON response.
     }
     response = None
     model = ""
@@ -255,6 +298,7 @@ def run() -> int:
     if not isinstance(content, str) or not content.strip():
         raise AgentError("Модель вернула пустой ответ.")
 
+    send_progress("🛠️ Ответ модели получен. Проверяю план изменений и совместимость с текущими данными.")
     plan = extract_json(content)
     summary = str(plan.get("summary") or "").strip()
     clarification = plan.get("clarification")
@@ -305,10 +349,12 @@ def run() -> int:
     for filename in changed_files:
         if len(updated_files[filename].encode("utf-8")) > MAX_FILE_BYTES[filename]:
             raise AgentError(f"После изменений {filename} превысил допустимый размер.")
+    send_progress("🧪 План проверен. Применяю подготовленные изменения в рабочей копии.")
     for filename in changed_files:
         Path(filename).write_text(updated_files[filename], encoding="utf-8", newline="")
 
     summary = summary or "Изменения приложения подготовлены."
+    send_progress("✅ Изменения подготовлены. Передаю файлы на автоматическую проверку JavaScript и PHP.")
     write_output(True, summary, usage_summary)
     print("Изменены файлы: " + ", ".join(changed_files) + ". Операций замены: " + str(len(patches)) + ".")
     print(summary)
