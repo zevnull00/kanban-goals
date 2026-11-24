@@ -989,6 +989,15 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
   }
 
   const HEART_COLORS = ['#c98d83','#7caa83','#8d9fbd','#b28fa8','#d7b66f','#91aa91'];
+  const HEART_COLOR_CHANGE_INTERVAL = 9000;
+  let heartColorIntervalId = null;
+
+  function restartHeartColorCycle() {
+    if (heartColorIntervalId !== null) {
+      clearInterval(heartColorIntervalId);
+    }
+    heartColorIntervalId = setInterval(refreshTitleHeartColor, HEART_COLOR_CHANGE_INTERVAL);
+  }
 
   function refreshTitleHeartColor() {
     const heart = document.querySelector('.title-heart');
@@ -1009,6 +1018,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
     }
     try { localStorage.setItem(THEME_KEY, normalized); } catch (error) { /* Тема останется до закрытия вкладки. */ }
     refreshTitleHeartColor();
+    restartHeartColorCycle();
   }
   function loadTheme() {
     try { return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light'; }
