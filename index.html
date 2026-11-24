@@ -20,6 +20,7 @@ button{cursor:pointer}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:3px solid #8d9fbd;outline-offset:2px}
 .topbar{max-width:1500px;margin:auto;padding:28px 28px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
 h1{font-size:clamp(1.65rem,3vw,2.25rem);line-height:1.15;margin:0 0 7px;font-weight:700;letter-spacing:-.04em}
+.title-heart{color:var(--heart-color,#c98d83);transition:color .3s ease;}
 .subtitle{color:var(--muted);margin:0}
 .actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
 .btn{border:1px solid var(--line);background:var(--white);color:var(--ink);border-radius:12px;padding:9px 13px;box-shadow:0 2px 5px rgba(67,56,39,.03)}
@@ -497,7 +498,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
 </div>
 <header class="topbar">
   <div>
-    <h1>Канбан Дашук 💛</h1>
+    <h1>Канбан Дашук <span class="title-heart" aria-hidden="true">💛</span></h1>
     <p class="subtitle"><span data-motivation></span></p>
   </div>
   <div class="actions" aria-label="Действия с данными">
@@ -987,6 +988,16 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
     });
   }
 
+  const HEART_COLORS = ['#c98d83','#7caa83','#8d9fbd','#b28fa8','#d7b66f','#91aa91'];
+
+  function refreshTitleHeartColor() {
+    const heart = document.querySelector('.title-heart');
+    if (!heart) return;
+    const color = HEART_COLORS[Math.floor(Math.random() * HEART_COLORS.length)];
+    heart.style.color = color;
+    document.documentElement.style.setProperty('--heart-color', color);
+  }
+
   function applyTheme(theme) {
     const normalized = theme === 'dark' ? 'dark' : 'light';
     document.body.dataset.theme = normalized;
@@ -997,6 +1008,7 @@ body[data-theme="dark"] .project-task-row{background:color-mix(in srgb,var(--pro
       button.setAttribute('aria-label', normalized === 'dark' ? 'Переключить на светлую тему' : 'Переключить на тёмную тему');
     }
     try { localStorage.setItem(THEME_KEY, normalized); } catch (error) { /* Тема останется до закрытия вкладки. */ }
+    refreshTitleHeartColor();
   }
   function loadTheme() {
     try { return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light'; }
